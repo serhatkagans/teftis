@@ -1,0 +1,129 @@
+{
+    "code": "2.4",
+    "name": "Ön İncelemede, Çağrı Kâğıdına Rağmen Gelmeyen Tanıkla İlgili Yetkili Mercie Yazılan Yazı",
+    "category": "Çağrı Kâğıtları",
+    "type": "yazi",
+    "fields": [
+        {
+            "id": "sayi",
+            "type": "text",
+            "label": "Sayı",
+            "required": true,
+            "placeholder": "…../…,…"
+        },
+        {
+            "id": "tarih",
+            "type": "date",
+            "label": "Tarih",
+            "required": true
+        },
+        {
+            "id": "yonelim_makami",
+            "type": "select",
+            "label": "Yönelim Makamı (Valilik/Kaymakamlık)",
+            "required": true,
+            "options": [
+                "VALİLİĞİNE",
+                "KAYMAKAMLIĞINA"
+            ]
+        },
+        {
+            "id": "yonelim_yeri",
+            "type": "text",
+            "label": "Valilik/Kaymakamlık İli/İlçesi",
+            "required": true,
+            "placeholder": "ANKARA"
+        },
+        {
+            "id": "ilgi_a_tarih",
+            "type": "date",
+            "label": "İlgi (a) Makam Oluru Tarihi",
+            "required": true
+        },
+        {
+            "id": "ilgi_a_sayi",
+            "type": "text",
+            "label": "İlgi (a) Makam Oluru Sayısı",
+            "required": true
+        },
+        {
+            "id": "ilgi_b_tarih",
+            "type": "date",
+            "label": "İlgi (b) Görevlendirme Emri Tarihi",
+            "required": true
+        },
+        {
+            "id": "ilgi_b_sayi",
+            "type": "text",
+            "label": "İlgi (b) Görevlendirme Emri Sayısı",
+            "required": true
+        },
+        {
+            "id": "tanik_ad_soyad",
+            "type": "text",
+            "label": "Tanık Adı Soyadı",
+            "required": true
+        },
+        {
+            "id": "tanik_tc",
+            "type": "text",
+            "label": "Tanık T.C. Kimlik No",
+            "required": true
+        },
+        {
+            "id": "tanik_gorev_adres",
+            "type": "textarea",
+            "label": "Tanık Görevi / İş Adresi ve Tel",
+            "rows": 2
+        },
+        {
+            "id": "tanik_ikamet_adres",
+            "type": "textarea",
+            "label": "Tanık İkamet Adresi ve Tel",
+            "rows": 2
+        },
+        {
+            "id": "randevu_tarihi",
+            "type": "date",
+            "label": "Zorla Getirme Randevu Tarihi",
+            "required": true
+        },
+        {
+            "id": "randevu_saati",
+            "type": "time",
+            "label": "Zorla Getirme Randevu Saati",
+            "required": true
+        },
+        {
+            "id": "randevu_yeri",
+            "type": "text",
+            "label": "Randevu Yeri (Kurum/Oda)",
+            "required": true,
+            "placeholder": "….. ….. Müdürlüğündeki Müfettişliğimiz çalışma odası"
+        },
+        {
+            "id": "ek_cagri_sayfa",
+            "type": "number",
+            "label": "Ek-1 Çağrı Yazısı Sayfa Sayısı",
+            "value": "1"
+        },
+        {
+            "id": "ek_teblig_sayfa",
+            "type": "number",
+            "label": "Ek-2 Tebliğ-Tebellüğ Sayfa Sayısı",
+            "value": "1"
+        },
+        {
+            "id": "mufettis_ad_soyad",
+            "type": "text",
+            "label": "Müfettiş Adı Soyadı",
+            "required": true
+        },
+        {
+            "id": "mufettis_kod",
+            "type": "text",
+            "label": "Müfettiş Kodu",
+            "required": true
+        }
+    ]
+}

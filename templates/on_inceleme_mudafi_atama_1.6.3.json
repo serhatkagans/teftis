@@ -1,0 +1,146 @@
+{
+    "id": "1.6.3",
+    "name": "Müdafi Seçebilecek Durumda Olmadığının Beyan Edilerek Müdafi Görevlendirilmesi İstenildiğinde Düzenlenecek İfade Tutanağı",
+    "category": "İfade Tutanakları",
+    "type": "ifade_mudafi_atama",
+    "sections": [
+        {
+            "title": "Kimlik Bilgileri",
+            "icon": "👤",
+            "fields": [
+                {
+                    "id": "ad_soyad",
+                    "label": "Adı ve Soyadı",
+                    "type": "text",
+                    "required": true,
+                    "width": "half"
+                },
+                {
+                    "id": "tc_kimlik",
+                    "label": "T.C. Kimlik No/Uyruğu",
+                    "type": "text",
+                    "required": true,
+                    "width": "half"
+                },
+                {
+                    "id": "ana_baba_adi",
+                    "label": "Ana ve Baba Adı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "dogum_yeri_tarihi",
+                    "label": "Doğum Yeri ve Tarihi",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "gorevi",
+                    "label": "Görevi/İşi/Mesleği",
+                    "type": "text",
+                    "width": "full"
+                },
+                {
+                    "id": "is_adresi",
+                    "label": "Görev/İşyeri Adresi",
+                    "type": "textarea",
+                    "width": "full"
+                },
+                {
+                    "id": "ikametgah_adresi",
+                    "label": "İkametgâh Adresi",
+                    "type": "textarea",
+                    "width": "full"
+                },
+                {
+                    "id": "telefon",
+                    "label": "Telefon (Cep-Ev-İşyeri)",
+                    "type": "text",
+                    "width": "full"
+                }
+            ]
+        },
+        {
+            "title": "İfade Detayları",
+            "icon": "📝",
+            "fields": [
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "required": true,
+                    "width": "half"
+                },
+                {
+                    "id": "saat",
+                    "label": "Saat",
+                    "type": "time",
+                    "required": true,
+                    "width": "half"
+                },
+                {
+                    "id": "kurum_adi",
+                    "label": "İfadenin Alındığı Yer",
+                    "type": "text",
+                    "placeholder": "... Müdürlüğü",
+                    "width": "full"
+                },
+                {
+                    "id": "konum",
+                    "label": "Konum",
+                    "type": "text",
+                    "value": "hakkında ön inceleme yapılan",
+                    "width": "full"
+                }
+            ]
+        },
+        {
+            "title": "Müdafi Randevu Bilgileri",
+            "icon": "📅",
+            "fields": [
+                {
+                    "id": "randevu_tarihi",
+                    "label": "Geri Dönüş Tarihi",
+                    "type": "date",
+                    "required": true,
+                    "width": "half"
+                },
+                {
+                    "id": "randevu_saati",
+                    "label": "Geri Dönüş Saati",
+                    "type": "time",
+                    "required": true,
+                    "width": "half"
+                }
+            ]
+        },
+        {
+            "title": "Müfettiş Bilgileri",
+            "icon": "👮",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Müfettiş Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Müfettiş Adı Soyadı",
+                    "type": "text"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,196 @@
+{
+    "id": "5.1",
+    "name": "Bilirkişi Görevlendirme Konusunda İlgili Kuruluşa Yazılan Yazı",
+    "category": "Bilirkişi",
+    "type": "bilirkisi_gorevlendirme",
+    "sections": [
+        {
+            "id": "belge_bilgileri",
+            "title": "Belge Bilgileri",
+            "fields": [
+                {
+                    "id": "sayi",
+                    "label": "Sayı",
+                    "type": "text",
+                    "placeholder": "…./…,…",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "konu",
+                    "label": "Konu",
+                    "type": "text",
+                    "value": "Bilirkişi Görevlendirmesi",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "alici_bilgileri",
+            "title": "Alıcı Bilgileri",
+            "fields": [
+                {
+                    "id": "mudur_adi",
+                    "label": "Müdürlük Adı",
+                    "type": "text",
+                    "placeholder": "örn: … İl/İlçe Millî Eğitim Müdürlüğü",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "ilgi_dokumanlari",
+            "title": "İlgi Dokümanları",
+            "fields": [
+                {
+                    "id": "makam_oluru_tarihi",
+                    "label": "Makam Oluru Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "makam_oluru_sayi",
+                    "label": "Makam Oluru Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "gorevlendirme_tarihi",
+                    "label": "Görevlendirme Emri Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "gorevlendirme_sayi",
+                    "label": "Görevlendirme Emri Sayısı",
+                    "type": "text",
+                    "placeholder": "….",
+                    "width": "half",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "bilirkisi_bilgileri",
+            "title": "Bilirkişi Bilgileri",
+            "fields": [
+                {
+                    "id": "bilirkisi1_ad_soyad",
+                    "label": "1. Bilirkişinin Adı Soyadı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "bilirkisi1_brans",
+                    "label": "1. Bilirkişinin Branşı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "bilirkisi2_ad_soyad",
+                    "label": "2. Bilirkişinin Adı Soyadı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "bilirkisi2_brans",
+                    "label": "2. Bilirkişinin Branşı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "okul_adi",
+                    "label": "Okul/Kurum Adı",
+                    "type": "text",
+                    "placeholder": "Bilirkişilerin görev yaptığı okul",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "imza_bolumu",
+            "title": "Müfettiş Bilgileri",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half"
+                }
+            ]
+        },
+        {
+            "id": "ekler",
+            "title": "Ekler",
+            "fields": [
+                {
+                    "id": "ek1_bilirkisi",
+                    "label": "1. Ek - Bilirkişi Adı Soyadı (Görevlendirme Yazısı için)",
+                    "type": "text",
+                    "placeholder": "Adı Soyadı",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ek1_sayfa",
+                    "label": "Sayfa Sayısı",
+                    "type": "text",
+                    "placeholder": "… Sayfa",
+                    "width": "half",
+                    "value": "1 Sayfa"
+                },
+                {
+                    "id": "ek2_bilirkisi",
+                    "label": "2. Ek - Bilirkişi Adı Soyadı (Görevlendirme Yazısı için)",
+                    "type": "text",
+                    "placeholder": "Adı Soyadı",
+                    "width": "half"
+                },
+                {
+                    "id": "ek2_sayfa",
+                    "label": "Sayfa Sayısı",
+                    "type": "text",
+                    "placeholder": "… Sayfa",
+                    "width": "half",
+                    "value": "1 Sayfa"
+                }
+            ]
+        }
+    ]
+}

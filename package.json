@@ -1,0 +1,23 @@
+{
+    "name": "sorusturma-belge-uretim-modulu",
+    "version": "1.0.0",
+    "description": "Teftiş Kurulu Başkanlığı İnceleme ve Soruşturma Modülü",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server/index.js",
+        "dev": "node server/index.js"
+    },
+    "keywords": [
+        "document",
+        "pdf",
+        "template",
+        "investigation"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "docx": "^9.5.1",
+        "express": "^4.18.2",
+        "file-saver": "^2.0.5"
+    }
+}

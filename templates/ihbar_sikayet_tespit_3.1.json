@@ -1,0 +1,163 @@
+{
+    "id": "3.1",
+    "name": "İhbar ve Şikâyetlerle İlgili Tutanak",
+    "category": "İhbar ve Şikâyetlerle İlgili Tutanak",
+    "type": "ihbar_sikayet_tespit",
+    "sections": [
+        {
+            "id": "kimlik_bilgileri",
+            "title": "Kimlik ve Kişisel Bilgiler",
+            "fields": [
+                {
+                    "id": "ad_soyad",
+                    "label": "Adı ve Soyadı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tc_kimlik",
+                    "label": "T.C. Kimlik No / Uyruğu",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ana_baba_adi",
+                    "label": "Ana ve Baba Adı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "dogum_yeri_tarihi",
+                    "label": "Doğum Yeri ve Tarihi",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "gorevi",
+                    "label": "Görevi / İşi / Mesleği",
+                    "type": "text",
+                    "width": "full"
+                },
+                {
+                    "id": "is_adresi",
+                    "label": "Görev / İşyeri Adresi",
+                    "type": "textarea",
+                    "width": "full"
+                },
+                {
+                    "id": "ikametgah_adresi",
+                    "label": "İkametgâh Adresi",
+                    "type": "textarea",
+                    "width": "full"
+                },
+                {
+                    "id": "telefon",
+                    "label": "Telefon (Cep-Ev-İşyeri)",
+                    "type": "text",
+                    "width": "full"
+                }
+            ]
+        },
+        {
+            "id": "ihbar_detaylari",
+            "title": "İhbar/Şikâyet Detayları",
+            "fields": [
+                {
+                    "id": "tarih",
+                    "label": "İhbar/Şikâyet Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "saat",
+                    "label": "Saat",
+                    "type": "time",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "kurum_adi",
+                    "label": "Müfettişlik Yeri",
+                    "type": "text",
+                    "placeholder": "... Müdürlüğü/Lisesi/Kurumu",
+                    "width": "full"
+                }
+            ]
+        },
+        {
+            "id": "ihbar_icerigi",
+            "title": "İhbar/Şikâyet İçeriği",
+            "fields": [
+                {
+                    "id": "konu",
+                    "label": "İhbar/Şikâyet Konusu",
+                    "type": "text",
+                    "placeholder": "Örn: Disiplin İhlali",
+                    "width": "full"
+                },
+                {
+                    "id": "ilgili_gorevli",
+                    "label": "İlgili Görevli",
+                    "type": "text",
+                    "placeholder": "Görevlinin adı/unvanı",
+                    "width": "full"
+                },
+                {
+                    "id": "ihbar_aciklama",
+                    "label": "İhbar/Şikâyet Açıklaması",
+                    "type": "textarea",
+                    "placeholder": "Detaylı açıklama...",
+                    "width": "full",
+                    "rows": 6
+                },
+                {
+                    "id": "sunulan_belgeler",
+                    "label": "Sunulan Belgeler",
+                    "type": "text",
+                    "placeholder": "Örn: Fotoğraf, belge vs.",
+                    "width": "full"
+                },
+                {
+                    "id": "diger_basvuru",
+                    "label": "Başka Başvuru Var mı?",
+                    "type": "text",
+                    "placeholder": "Diğer mercilere başvuru durumu",
+                    "width": "full"
+                }
+            ]
+        },
+        {
+            "id": "imza_bolumu",
+            "title": "İmzalar",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half"
+                }
+            ]
+        }
+    ]
+}

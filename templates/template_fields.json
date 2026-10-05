@@ -1,0 +1,32 @@
+{
+  "templateId": "1.1",
+  "templateName": "Şikâyetçi İfade Tutanağı",
+  "fields": [
+    { "id": "tarih", "label": "Tarih", "type": "date", "required": true },
+    { "id": "saat", "label": "Saat", "type": "time", "required": true },
+    { "id": "yer", "label": "İfade Yeri", "type": "text", "required": true },
+    { "id": "sikayetci_adi", "label": "Şikâyetçi Adı Soyadı", "type": "text", "required": true },
+    { "id": "sikayetci_tc", "label": "T.C. Kimlik No", "type": "text", "required": true, "pattern": "^[0-9]{11}$" },
+    { "id": "sikayetci_baba", "label": "Baba Adı", "type": "text", "required": false },
+    { "id": "sikayetci_ana", "label": "Ana Adı", "type": "text", "required": false },
+    { "id": "sikayetci_dogum_yeri", "label": "Doğum Yeri", "type": "text", "required": false },
+    { "id": "sikayetci_dogum_tarihi", "label": "Doğum Tarihi", "type": "date", "required": false },
+    { "id": "sikayetci_adres", "label": "Adres", "type": "textarea", "required": true },
+    { "id": "sikayetci_telefon", "label": "Telefon", "type": "text", "required": false },
+    { "id": "sikayetci_meslek", "label": "Meslek", "type": "text", "required": false },
+    {
+      "id": "soru_cevap",
+      "label": "Sorular ve Cevaplar",
+      "type": "repeatable",
+      "minItems": 1,
+      "fields": [
+        { "id": "soru", "label": "Soru", "type": "textarea", "required": true },
+        { "id": "cevap", "label": "Cevap", "type": "textarea", "required": true }
+      ]
+    },
+    { "id": "ek_beyan", "label": "Ek Beyan", "type": "textarea", "required": false },
+    { "id": "muhakkik_adi", "label": "Muhakkik Adı Soyadı", "type": "text", "required": true },
+    { "id": "muhakkik_unvan", "label": "Muhakkik Unvanı", "type": "text", "required": true },
+    { "id": "katip_adi", "label": "Kâtip Adı Soyadı", "type": "text", "required": false }
+  ]
+}

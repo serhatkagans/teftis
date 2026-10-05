@@ -1,0 +1,146 @@
+{
+    "id": "1.4.1",
+    "templateName": "Yazılı İfade Tutanağı",
+    "category": "İfade Tutanakları",
+    "sections": [
+        {
+            "title": "Genel Bilgiler",
+            "icon": "📅",
+            "fields": [
+                {
+                    "id": "sorusturma_konusu",
+                    "label": "Soruşturmaya Konu Kişi",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "örn: Ali Yılmaz",
+                    "fullWidth": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "required": true
+                },
+                {
+                    "id": "saat",
+                    "label": "Saat",
+                    "type": "time",
+                    "required": true
+                },
+                {
+                    "id": "kurum_adi",
+                    "label": "Kurum Adı",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "örn: Maarif Müfettişliği"
+                }
+            ]
+        },
+        {
+            "title": "İfade Sahibi Kimlik Bilgileri",
+            "icon": "👤",
+            "fields": [
+                {
+                    "id": "ad_soyad",
+                    "label": "Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "tc_kimlik_uyruk",
+                    "label": "T.C. Kimlik No / Uyruk",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "TC No - T.C."
+                },
+                {
+                    "id": "ana_baba_adi",
+                    "label": "Ana / Baba Adı",
+                    "type": "text",
+                    "placeholder": "Ayşe / Ali"
+                },
+                {
+                    "id": "dogum_yeri_tarihi",
+                    "label": "Doğum Yeri ve Tarihi",
+                    "type": "text",
+                    "placeholder": "Ankara - 01.01.1980"
+                },
+                {
+                    "id": "gorevi_meslegi",
+                    "label": "Görevi / Mesleği",
+                    "type": "text"
+                },
+                {
+                    "id": "gorev_isyeri_adresi",
+                    "label": "Görev Yeri Adresi",
+                    "type": "textarea",
+                    "rows": 2,
+                    "fullWidth": true
+                },
+                {
+                    "id": "ikametgah_adresi",
+                    "label": "İkametgah Adresi",
+                    "type": "textarea",
+                    "rows": 2,
+                    "fullWidth": true
+                },
+                {
+                    "id": "telefon",
+                    "label": "Telefon",
+                    "type": "tel"
+                }
+            ]
+        },
+        {
+            "title": "İfade Bilgileri",
+            "icon": "ℹ️",
+            "fields": [
+                {
+                    "id": "konum",
+                    "label": "İfade Sahibinin Konumu",
+                    "type": "select",
+                    "required": true,
+                    "options": [
+                        "Tanık",
+                        "Şikayetçi",
+                        "Hakkında İnceleme Yapılan",
+                        "Hakkında Soruşturma Yapılan"
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Yazılı Sorular",
+            "icon": "📝",
+            "isWrittenQuestions": true
+        },
+        {
+            "title": "İmza Bilgileri",
+            "icon": "✍️",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Müfettiş Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Müfettiş Adı Soyadı",
+                    "type": "text"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text"
+                }
+            ]
+        }
+    ]
+}

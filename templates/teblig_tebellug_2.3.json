@@ -1,0 +1,56 @@
+{
+    "code": "2.3",
+    "name": "Disiplin Soruşturması ve Ön İncelemede Çağrı Kâğıdının Tebliğ-Tebellüğ Tutanağı",
+    "category": "Çağrı Kâğıtları",
+    "type": "tutanak",
+    "fields": [
+        {
+            "id": "cagri_tarihi",
+            "type": "date",
+            "label": "Çağrı Kâğıdı Tarihi",
+            "required": true
+        },
+        {
+            "id": "cagri_sayisi",
+            "type": "text",
+            "label": "Çağrı Kâğıdı Sayısı",
+            "required": true
+        },
+        {
+            "id": "teslim_tarihi",
+            "type": "date",
+            "label": "Teslim Tarihi",
+            "required": true
+        },
+        {
+            "id": "teslim_saati",
+            "type": "time",
+            "label": "Teslim Saati",
+            "required": true
+        },
+        {
+            "id": "teslim_eden_ad",
+            "type": "text",
+            "label": "Teslim Edenin Adı Soyadı",
+            "required": true
+        },
+        {
+            "id": "teslim_eden_unvan",
+            "type": "text",
+            "label": "Teslim Edenin Unvanı",
+            "required": true
+        },
+        {
+            "id": "teslim_alan_ad",
+            "type": "text",
+            "label": "Teslim Alanın Adı Soyadı",
+            "required": true
+        },
+        {
+            "id": "teslim_alan_unvan",
+            "type": "text",
+            "label": "Teslim Alanın Unvanı",
+            "required": true
+        }
+    ]
+}

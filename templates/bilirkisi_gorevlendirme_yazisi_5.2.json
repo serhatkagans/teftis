@@ -1,0 +1,135 @@
+{
+    "id": "5.2",
+    "name": "Bilirkişi Görevlendirme Yazısı",
+    "category": "Bilirkişi",
+    "type": "bilirkisi_gorevlendirme_yazisi",
+    "sections": [
+        {
+            "id": "belge_bilgileri",
+            "title": "Belge Bilgileri",
+            "fields": [
+                {
+                    "id": "sayi",
+                    "label": "Sayı",
+                    "type": "text",
+                    "placeholder": "…./…,…",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "konu",
+                    "label": "Konu",
+                    "type": "text",
+                    "value": "Görevlendirme",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "bilirkisi_bilgileri",
+            "title": "Bilirkişi Bilgileri",
+            "fields": [
+                {
+                    "id": "bilirkisi_ad_soyad",
+                    "label": "Bilirkişi Adı Soyadı",
+                    "type": "text",
+                    "placeholder": "Sayın ….. …..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "bilirkisi_gorev",
+                    "label": "Bilirkişi Unvanı/Görevi",
+                    "type": "text",
+                    "placeholder": "….. ….. Lisesi ….. Öğretmeni",
+                    "width": "half",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "gorev_detaylari",
+            "title": "Görevlendirme Detayları",
+            "fields": [
+                {
+                    "id": "ders_adi",
+                    "label": "Ders Adı / Konu",
+                    "type": "text",
+                    "placeholder": "Matematik",
+                    "width": "full",
+                    "required": true
+                },
+                {
+                    "id": "randevu_tarihi",
+                    "label": "Hazır Bulunma Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "randevu_gunu",
+                    "label": "Gün",
+                    "type": "text",
+                    "placeholder": "Pazartesi",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "randevu_saati",
+                    "label": "Saat",
+                    "type": "time",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "randevu_yeri",
+                    "label": "Hazır Bulunma Yeri",
+                    "type": "text",
+                    "placeholder": "….. Lisesindeki ….. odasında",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "imza_bolumu",
+            "title": "Müfettiş Bilgileri",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half"
+                }
+            ]
+        }
+    ]
+}

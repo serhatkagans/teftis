@@ -1,0 +1,148 @@
+{
+    "id": "5.3",
+    "name": "Bilirkişi Ücret Ödeme Yazısı",
+    "category": "Bilirkişi",
+    "type": "bilirkisi_ucret",
+    "sections": [
+        {
+            "id": "belge_bilgileri",
+            "title": "Belge Bilgileri",
+            "fields": [
+                {
+                    "id": "sayi",
+                    "label": "Sayı",
+                    "type": "text",
+                    "placeholder": "…./…,…",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "konu",
+                    "label": "Konu",
+                    "type": "text",
+                    "value": "Bilirkişi Ücreti",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "ilgi_bilgileri",
+            "title": "İlgi (Referans) Bilgileri",
+            "fields": [
+                {
+                    "id": "ilgi_a_tarih",
+                    "label": "İlgi (a) Makam Oluru Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_a_sayi",
+                    "label": "İlgi (a) Makam Oluru Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_b_tarih",
+                    "label": "İlgi (b) Görevlendirme Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_b_sayi",
+                    "label": "İlgi (b) Görevlendirme Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "sorusturma_detaylari",
+            "title": "Soruşturma ve Bilirkişi Detayları",
+            "fields": [
+                {
+                    "id": "sorusturulan_kurum",
+                    "label": "Soruşturulan Okul/Kurum",
+                    "type": "text",
+                    "placeholder": "….. ….. Lisesi",
+                    "width": "full",
+                    "required": true
+                },
+                {
+                    "id": "bilirkisi_kurum",
+                    "label": "Bilirkişilerin Görev Yaptığı Okul",
+                    "type": "text",
+                    "placeholder": "….. Lisesi",
+                    "width": "full",
+                    "required": true
+                },
+                {
+                    "id": "bilirkisi_ad_soyad",
+                    "label": "Bilirkişi Adı Soyadı (Çoğul ise virgülle ayırın)",
+                    "type": "text",
+                    "placeholder": "Adı Soyadı",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "id": "mufettis_bilgileri",
+            "title": "Müfettiş Bilgileri",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Bakanlık Müfettişi Adı Soyadı",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text",
+                    "width": "half"
+                }
+            ]
+        },
+        {
+            "id": "ekler",
+            "title": "Ekler",
+            "fields": [
+                {
+                    "id": "ek_sayfa",
+                    "label": "Ek Sayfa Sayısı",
+                    "type": "number",
+                    "value": "1",
+                    "width": "half"
+                }
+            ]
+        }
+    ]
+}

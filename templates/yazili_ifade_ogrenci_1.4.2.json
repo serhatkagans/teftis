@@ -1,0 +1,137 @@
+{
+    "id": "1.4.2",
+    "templateName": "Yazılı İfade Tutanağı (Öğrenci İçin)",
+    "category": "İfade Tutanakları",
+    "sections": [
+        {
+            "title": "Genel Bilgiler",
+            "icon": "📅",
+            "fields": [
+                {
+                    "id": "sorusturma_konusu",
+                    "label": "Soruşturmaya Konu Kişi",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "örn: Ali Yılmaz",
+                    "fullWidth": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "required": true
+                },
+                {
+                    "id": "saat",
+                    "label": "Saat",
+                    "type": "time",
+                    "required": true
+                },
+                {
+                    "id": "kurum_adi",
+                    "label": "Kurum Adı",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "örn: Atatürk Ortaokulu"
+                }
+            ]
+        },
+        {
+            "title": "Öğrenci Kimlik Bilgileri",
+            "icon": "👤",
+            "fields": [
+                {
+                    "id": "ogrenci_ad_soyad",
+                    "label": "Öğrencinin Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "tc_kimlik_uyruk",
+                    "label": "T.C. Kimlik No / Uyruk",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "TC No - T.C."
+                },
+                {
+                    "id": "ogrenci_numarasi",
+                    "label": "Öğrenci Numarası",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "sinifi",
+                    "label": "Sınıfı",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "örn: 8-A"
+                },
+                {
+                    "id": "okulu",
+                    "label": "Okulu",
+                    "type": "text",
+                    "required": true,
+                    "fullWidth": true
+                }
+            ]
+        },
+        {
+            "title": "İfade Bilgileri",
+            "icon": "ℹ️",
+            "fields": [
+                {
+                    "id": "konum",
+                    "label": "Öğrencinin Konumu",
+                    "type": "select",
+                    "required": true,
+                    "options": [
+                        "Tanık",
+                        "Şikayetçi",
+                        "Hakkında İnceleme Yapılan",
+                        "Hakkında Soruşturma Yapılan"
+                    ]
+                },
+                {
+                    "id": "rehber_ogretmen",
+                    "label": "Eşlik Eden Rehber Öğretmen",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "Rehber öğretmenin adı soyadı"
+                }
+            ]
+        },
+        {
+            "title": "Yazılı Sorular",
+            "icon": "📝",
+            "isWrittenQuestions": true
+        },
+        {
+            "title": "İmza Bilgileri",
+            "icon": "✍️",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Müfettiş Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Müfettiş Adı Soyadı",
+                    "type": "text"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text"
+                }
+            ]
+        }
+    ]
+}

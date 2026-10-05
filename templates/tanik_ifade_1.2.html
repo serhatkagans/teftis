@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tanık İfade Tutanağı (Yeminsiz)</title>
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 2cm 1.5cm;
+            }
+
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
+            padding: 2cm 1.5cm;
+            max-width: 21cm;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1.5cm;
+        }
+
+        .header h1 {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 0.5cm;
+            letter-spacing: 2px;
+        }
+
+        .header .doc-no {
+            font-size: 11pt;
+            color: #333;
+        }
+
+        .meta-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1cm;
+            border-bottom: 1px solid #000;
+            padding-bottom: 0.5cm;
+        }
+
+        .meta-info div {
+            font-size: 11pt;
+        }
+
+        .section {
+            margin-bottom: 0.8cm;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 11pt;
+            text-decoration: underline;
+            margin-bottom: 0.3cm;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.3cm 1cm;
+            margin-bottom: 0.5cm;
+        }
+
+        .info-item {
+            font-size: 11pt;
+        }
+
+        .info-item .label {
+            font-weight: bold;
+        }
+
+        .info-item.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .paragraph {
+            text-align: justify;
+            margin-bottom: 0.8cm;
+            text-indent: 1cm;
+            font-size: 11pt;
+        }
+
+        .paragraph.no-indent {
+            text-indent: 0;
+        }
+
+        .qa-section {
+            margin-top: 1cm;
+        }
+
+        .qa-item {
+            margin-bottom: 0.8cm;
+            page-break-inside: avoid;
+        }
+
+        .qa-item .question {
+            font-weight: bold;
+            margin-bottom: 0.2cm;
+        }
+
+        .qa-item .question::before {
+            content: "SORU: ";
+            font-weight: bold;
+        }
+
+        .qa-item .answer {
+            margin-left: 1cm;
+            text-align: justify;
+        }
+
+        .qa-item .answer::before {
+            content: "CEVAP: ";
+            font-weight: bold;
+        }
+
+        .closing-statement {
+            margin-top: 1cm;
+            text-align: justify;
+            text-indent: 1cm;
+            font-size: 11pt;
+        }
+
+        .signature-section {
+            margin-top: 2cm;
+            page-break-inside: avoid;
+        }
+
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1cm;
+            text-align: center;
+        }
+
+        .signature-box {
+            padding-top: 2cm;
+            border-top: 1px solid #000;
+        }
+
+        .signature-box .title {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 0.2cm;
+        }
+
+        .signature-box .name {
+            font-size: 11pt;
+        }
+
+        .signature-box .unvan {
+            font-size: 10pt;
+            color: #333;
+        }
+
+        .footer {
+            margin-top: 1.5cm;
+            font-size: 9pt;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 0.5cm;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Tanık İfade Tutanağı</h1>
+        <div class="doc-no">Belge No: 1.2 (Yeminsiz)</div>
+    </div>
+
+    <div class="meta-info">
+        <div><span class="label">Tarih:</span> {{tarih}}</div>
+        <div><span class="label">Saat:</span> {{saat}}</div>
+        <div><span class="label">Yer:</span> {{yer}}</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">TANIK BİLGİLERİ</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="label">Adı Soyadı:</span> {{tanik_adi}}
+            </div>
+            <div class="info-item">
+                <span class="label">T.C. Kimlik No:</span> {{tanik_tc}}
+            </div>
+            <div class="info-item">
+                <span class="label">Baba Adı:</span> {{tanik_baba}}
+            </div>
+            <div class="info-item">
+                <span class="label">Ana Adı:</span> {{tanik_ana}}
+            </div>
+            <div class="info-item">
+                <span class="label">Doğum Yeri:</span> {{tanik_dogum_yeri}}
+            </div>
+            <div class="info-item">
+                <span class="label">Doğum Tarihi:</span> {{tanik_dogum_tarihi}}
+            </div>
+            <div class="info-item">
+                <span class="label">Meslek:</span> {{tanik_meslek}}
+            </div>
+            <div class="info-item">
+                <span class="label">Görevi:</span> {{tanik_gorev}}
+            </div>
+            <div class="info-item">
+                <span class="label">Telefon:</span> {{tanik_telefon}}
+            </div>
+            <div class="info-item full-width">
+                <span class="label">Adres:</span> {{tanik_adres}}
+            </div>
+        </div>
+    </div>
+
+    <div class="paragraph">
+        Yukarıda açık kimliği yazılı bulunan {{tanik_adi}}, {{kurum_adi}} nezdinde yürütülen
+        soruşturma kapsamında tanık sıfatıyla ifade vermek üzere davet edilmiş olup,
+        belirlenen gün ve saatte ifade yerine gelmiştir.
+    </div>
+
+    <div class="paragraph">
+        Tanıklığa mani bir hâlinin bulunmadığını, tanıklıktan çekinme hakkının olmadığını
+        beyan eden tanığa, soruşturma konusu olan <strong>"{{sorusturma_konusu}}"</strong>
+        hakkında aşağıdaki sorular yöneltilmiş ve şifahi olarak alınan cevapları
+        aynen aşağıya yazılmıştır:
+    </div>
+
+    <div class="section qa-section">
+        <div class="section-title">İFADE İÇERİĞİ</div>
+        {{#soru_cevap}}
+        <div class="qa-item">
+            <div class="question">{{soru}}</div>
+            <div class="answer">{{cevap}}</div>
+        </div>
+        {{/soru_cevap}}
+    </div>
+
+    {{#ek_beyan}}
+    <div class="paragraph no-indent">
+        <strong>EK BEYAN:</strong> {{ek_beyan}}
+    </div>
+    {{/ek_beyan}}
+
+    <div class="closing-statement">
+        Yazılanlar tanığa okundu, kendisi de okudu. Yazılanların söylediklerinin aynısı
+        olduğunu beyan etmesi üzerine, işbu ifade tutanağı birlikte imza altına alındı.
+    </div>
+
+    <div class="signature-section">
+        <div class="signature-grid">
+            <div class="signature-box">
+                <div class="title">1. MUHAKKİK</div>
+                <div class="name">{{muhakkik1_adi}}</div>
+                <div class="unvan">{{muhakkik1_unvan}}</div>
+            </div>
+            <div class="signature-box">
+                <div class="title">TANIK</div>
+                <div class="name">{{tanik_adi}}</div>
+            </div>
+            <div class="signature-box">
+                <div class="title">2. MUHAKKİK</div>
+                <div class="name">{{muhakkik2_adi}}</div>
+                <div class="unvan">{{muhakkik2_unvan}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Bu belge resmi soruşturma dosyasının ayrılmaz bir parçasıdır.
+    </div>
+</body>
+
+</html>

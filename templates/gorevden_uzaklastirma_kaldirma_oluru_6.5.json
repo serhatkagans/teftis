@@ -1,0 +1,176 @@
+{
+    "id": "6.5",
+    "title": "Bakanlık Müfettişlerince Alınan Görevden Uzaklaştırma Tedbirinin Kaldırılması Oluru",
+    "description": "Teftiş Kurulu Başkanı tarafından Bakanlık Makamına görevden uzaklaştırma tedbirinin kaldırılması için yazılan olur yazısı.",
+    "category": "Görevden Uzaklaştırma",
+    "type": "yazi",
+    "sections": [
+        {
+            "title": "Belge Bilgileri",
+            "icon": "📋",
+            "fields": [
+                {
+                    "id": "sayi",
+                    "label": "Sayı",
+                    "type": "text",
+                    "placeholder": "…./…,…",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "title": "Personel Bilgileri",
+            "icon": "👤",
+            "fields": [
+                {
+                    "id": "personel_ad_soyad",
+                    "label": "Personel Adı Soyadı",
+                    "type": "text",
+                    "placeholder": "….. …..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "personel_tc",
+                    "label": "T.C. Kimlik No",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "personel_unvan",
+                    "label": "Unvanı",
+                    "type": "text",
+                    "placeholder": "Saymanı",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "personel_kurum",
+                    "label": "Görev Yeri (Kurum Adı)",
+                    "type": "text",
+                    "placeholder": "….. ….. Mesleki ve Teknik Anadolu Lisesi",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "title": "İlgi (Referans) Bilgileri",
+            "icon": "🔗",
+            "fields": [
+                {
+                    "id": "ilgi_a_tarih",
+                    "label": "İlgi (a) Makam Oluru Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_a_sayi",
+                    "label": "İlgi (a) Makam Oluru Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_b_tarih",
+                    "label": "İlgi (b) Görevlendirme Emri Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_b_sayi",
+                    "label": "İlgi (b) Görevlendirme Emri Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_c_tarih",
+                    "label": "İlgi (c) Görevden Uzaklaştırma Yazısı Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_c_sayi",
+                    "label": "İlgi (c) Görevden Uzaklaştırma Yazısı Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_d_tarih",
+                    "label": "İlgi (d) Kaldırma Talebi Yazısı Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ilgi_d_sayi",
+                    "label": "İlgi (d) Kaldırma Talebi Yazısı Sayısı",
+                    "type": "text",
+                    "placeholder": "…..",
+                    "width": "half",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "title": "Yetkili İmza Bilgileri",
+            "icon": "✍️",
+            "fields": [
+                {
+                    "id": "baskan_ad_soyad",
+                    "label": "Teftiş Kurulu Başkanı Adı Soyadı",
+                    "type": "text",
+                    "placeholder": "Adı SOYADI",
+                    "width": "full",
+                    "required": true
+                },
+                {
+                    "id": "bakan_ad_soyad",
+                    "label": "Bakan Adı Soyadı",
+                    "type": "text",
+                    "placeholder": "Adı SOYADI",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "title": "Ekler",
+            "icon": "📎",
+            "fields": [
+                {
+                    "id": "ek_aciklama",
+                    "label": "Ek Açıklaması",
+                    "type": "text",
+                    "value": "….. …..",
+                    "width": "half"
+                },
+                {
+                    "id": "ek_sayfa",
+                    "label": "Ek Sayfa Sayısı",
+                    "type": "number",
+                    "value": "1",
+                    "width": "half"
+                }
+            ]
+        }
+    ]
+}

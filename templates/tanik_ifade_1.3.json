@@ -1,0 +1,145 @@
+{
+    "id": "1.3",
+    "templateName": "Tanık İfade Tutanağı (Yeminli)",
+    "category": "İfade Tutanakları",
+    "sections": [
+        {
+            "title": "Genel Bilgiler",
+            "icon": "📅",
+            "fields": [
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "required": true
+                },
+                {
+                    "id": "saat",
+                    "label": "Saat",
+                    "type": "time",
+                    "required": true
+                },
+                {
+                    "id": "kurum_adi",
+                    "label": "Kurum Adı",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "örn: Fatih",
+                    "fullWidth": true
+                },
+                {
+                    "id": "kurum_turu",
+                    "label": "Kurum Türü",
+                    "type": "select",
+                    "required": true,
+                    "options": [
+                        "İlkokulundaki",
+                        "Ortaokulundaki",
+                        "Lisesindeki",
+                        "Müdürlüğündeki"
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Tanık Bilgileri",
+            "icon": "👤",
+            "fields": [
+                {
+                    "id": "tanik_adi",
+                    "label": "Adı ve Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "tanik_tc",
+                    "label": "T.C. Kimlik No/Uyruğu",
+                    "type": "text",
+                    "required": true,
+                    "placeholder": "TC No / T.C."
+                },
+                {
+                    "id": "tanik_ana_baba",
+                    "label": "Ana ve Baba Adı",
+                    "type": "text"
+                },
+                {
+                    "id": "tanik_dogum_yeri_tarihi",
+                    "label": "Doğum Yeri ve Tarihi",
+                    "type": "text"
+                },
+                {
+                    "id": "tanik_gorev_meslek",
+                    "label": "Görevi/İşi/Mesleği",
+                    "type": "text"
+                },
+                {
+                    "id": "tanik_is_adresi",
+                    "label": "Görev/İşyeri Adresi",
+                    "type": "textarea",
+                    "fullWidth": true,
+                    "rows": 2
+                },
+                {
+                    "id": "tanik_ikamet_adresi",
+                    "label": "İkametgâh Adresi",
+                    "type": "textarea",
+                    "fullWidth": true,
+                    "rows": 2
+                },
+                {
+                    "id": "tanik_telefon",
+                    "label": "Telefon (Cep-Ev-İş yeri)",
+                    "type": "tel",
+                    "placeholder": "05XX XXX XX XX"
+                }
+            ]
+        },
+        {
+            "title": "Sorular ve Cevaplar",
+            "icon": "❓",
+            "isQA": true
+        },
+        {
+            "title": "Müfettiş Bilgileri",
+            "icon": "🏛️",
+            "fields": [
+                {
+                    "id": "muhakkik1_adi",
+                    "label": "1. Müfettiş Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "muhakkik1_unvan",
+                    "label": "1. Müfettiş Unvanı",
+                    "type": "text",
+                    "placeholder": "örn: Bakanlık Müfettişi",
+                    "value": "Bakanlık Müfettişi"
+                },
+                {
+                    "id": "muhakkik1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text"
+                },
+                {
+                    "id": "muhakkik2_adi",
+                    "label": "2. Müfettiş Adı Soyadı",
+                    "type": "text"
+                },
+                {
+                    "id": "muhakkik2_unvan",
+                    "label": "2. Müfettiş Unvanı",
+                    "type": "text",
+                    "placeholder": "örn: Bakanlık Müfettişi",
+                    "value": "Bakanlık Müfettişi"
+                },
+                {
+                    "id": "muhakkik2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text"
+                }
+            ]
+        }
+    ]
+}

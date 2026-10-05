@@ -1,0 +1,131 @@
+{
+    "id": "1.6.4",
+    "name": "Müdafi Seçemeyeceğini Beyan Üzerine Baro Başkanlığına Yazı Örneği",
+    "category": "İfade Tutanakları",
+    "type": "yazi_baro",
+    "sections": [
+        {
+            "title": "Üst Yazı Bilgileri",
+            "icon": "📄",
+            "fields": [
+                {
+                    "id": "sayi",
+                    "label": "Sayı",
+                    "type": "text",
+                    "placeholder": "…../…,…",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tarih",
+                    "label": "Tarih",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "konu",
+                    "label": "Konu",
+                    "type": "text",
+                    "value": "Müdafi Talebi",
+                    "width": "full",
+                    "required": true
+                },
+                {
+                    "id": "baro_adi",
+                    "label": "Baro Adı",
+                    "type": "text",
+                    "placeholder": "ANKARA",
+                    "width": "full",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "title": "İfadesi Alınacak Kişi Bilgileri",
+            "icon": "👤",
+            "fields": [
+                {
+                    "id": "ifade_sahibi_ad_soyad",
+                    "label": "Adı Soyadı",
+                    "type": "text",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "tc_kimlik",
+                    "label": "T.C. Kimlik No",
+                    "type": "text",
+                    "width": "half"
+                },
+                {
+                    "id": "ifade_sahibi_adres_tel",
+                    "label": "Adresi ve Telefonu",
+                    "type": "textarea",
+                    "width": "full"
+                }
+            ]
+        },
+        {
+            "title": "İfade Randevu Bilgileri",
+            "icon": "📅",
+            "fields": [
+                {
+                    "id": "ifade_yeri",
+                    "label": "İfade Yeri",
+                    "type": "text",
+                    "width": "full",
+                    "required": true
+                },
+                {
+                    "id": "ifade_tarihi",
+                    "label": "İfade Tarihi",
+                    "type": "date",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ifade_saati",
+                    "label": "İfade Saati",
+                    "type": "time",
+                    "width": "half",
+                    "required": true
+                },
+                {
+                    "id": "ek_sayfa",
+                    "label": "Ekli Tutanak Sayfa Sayısı",
+                    "type": "number",
+                    "width": "quarter"
+                }
+            ]
+        },
+        {
+            "title": "Müfettiş Bilgileri",
+            "icon": "👮",
+            "fields": [
+                {
+                    "id": "mufettis1_ad_soyad",
+                    "label": "1. Müfettiş Adı Soyadı",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis1_kod",
+                    "label": "1. Müfettiş Kodu",
+                    "type": "text",
+                    "required": true
+                },
+                {
+                    "id": "mufettis2_ad_soyad",
+                    "label": "2. Müfettiş Adı Soyadı",
+                    "type": "text"
+                },
+                {
+                    "id": "mufettis2_kod",
+                    "label": "2. Müfettiş Kodu",
+                    "type": "text"
+                }
+            ]
+        }
+    ]
+}
