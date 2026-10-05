@@ -176,6 +176,28 @@ function authenticateToken(req, res, next) {
     });
 }
 
+// Parametreli sorgu yardımcıları (SQL enjeksiyonuna karşı)
+function queryRows(sql, params = []) {
+    const result = db.exec(sql, params);
+    if (result.length === 0) return [];
+    const { columns, values } = result[0];
+    return values.map(row => {
+        const obj = {};
+        columns.forEach((col, i) => { obj[col] = row[i]; });
+        return obj;
+    });
+}
+
+function toDocument(row) {
+    row.form_data = JSON.parse(row.form_data || '{}');
+    return row;
+}
+
+// Belge yalnızca sahibine aitse döner
+function findOwnDocument(id, userId) {
+    return queryRows('SELECT * FROM documents WHERE id = ? AND user_id = ?', [id, userId])[0] || null;
+}
+
 // Optional auth - sets req.user if token exists, but doesn't require it
 function optionalAuth(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -209,8 +231,7 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         // Check if username exists
-        const existing = db.exec(`SELECT id FROM users WHERE username = '${username}'`);
-        if (existing.length > 0 && existing[0].values.length > 0) {
+        if (queryRows('SELECT id FROM users WHERE username = ?', [username]).length > 0) {
             return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor' });
         }
 
@@ -221,8 +242,8 @@ app.post('/api/auth/register', async (req, res) => {
 
         db.run(`
             INSERT INTO users (id, username, password, name, email, role, auth_provider, created_at, updated_at)
-            VALUES ('${id}', '${username}', '${hashedPassword}', '${name}', ${email ? `'${email}'` : 'NULL'}, 'mufettis', 'local', '${now}', '${now}')
-        `);
+            VALUES (?, ?, ?, ?, ?, 'mufettis', 'local', ?, ?)
+        `, [id, username, hashedPassword, name, email || null, now, now]);
 
         saveDatabase();
 
@@ -251,17 +272,10 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Find user
-        const result = db.exec(`SELECT * FROM users WHERE username = '${username}'`);
-        if (result.length === 0 || result[0].values.length === 0) {
+        const user = queryRows('SELECT * FROM users WHERE username = ?', [username])[0];
+        if (!user || !user.password) {
             return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı' });
         }
-
-        const columns = result[0].columns;
-        const row = result[0].values[0];
-        const user = {};
-        columns.forEach((col, i) => {
-            user[col] = row[i];
-        });
 
         // Check password
         const validPassword = await bcrypt.compare(password, user.password);
@@ -342,77 +356,70 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Tüm belge rotaları giriş gerektirir; her kullanıcı yalnızca kendi belgelerini görür.
+const SEARCHABLE_COLUMNS = ['sorusturma_konusu', 'ad_soyad', 'tc_kimlik', 'tarih', 'saat', 'yer', 'kurum_adi', 'konum',
+    'sikayetci_adi', 'sikayetci_tc', 'tanik_adi', 'muhakkik_adi', 'muhakkik_unvan',
+    'mufettis1_ad_soyad', 'mufettis2_ad_soyad', 'ikametgah_adresi', 'telefon'];
+
 // Get all documents
-app.get('/api/documents', (req, res) => {
+app.get('/api/documents', authenticateToken, (req, res) => {
     try {
-        const { search, template_code, category, user_id } = req.query;
+        const { search, template_code, category } = req.query;
 
-        let query = 'SELECT * FROM documents WHERE 1=1';
-
-        // Filter by user_id if provided
-        if (user_id) {
-            query += ` AND user_id = '${user_id}'`;
-        }
+        let query = 'SELECT * FROM documents WHERE user_id = ?';
+        const params = [req.user.id];
 
         if (search) {
-            query += ` AND (sorusturma_konusu LIKE '%${search}%' 
-                        OR ad_soyad LIKE '%${search}%' 
-                        OR sikayetci_adi LIKE '%${search}%'
-                        OR tc_kimlik LIKE '%${search}%')`;
+            query += ` AND (sorusturma_konusu LIKE ? OR ad_soyad LIKE ? OR sikayetci_adi LIKE ? OR tc_kimlik LIKE ?)`;
+            params.push(...Array(4).fill(`%${search}%`));
         }
 
         if (template_code) {
-            query += ` AND template_code = '${template_code}'`;
+            query += ' AND template_code = ?';
+            params.push(template_code);
         }
 
         if (category) {
-            query += ` AND category = '${category}'`;
+            query += ' AND category = ?';
+            params.push(category);
         }
 
         query += ' ORDER BY created_at DESC';
 
-        const result = db.exec(query);
-
-        if (result.length === 0) {
-            return res.json([]);
-        }
-
-        const columns = result[0].columns;
-        const documents = result[0].values.map(row => {
-            const doc = {};
-            columns.forEach((col, i) => {
-                doc[col] = row[i];
-            });
-            doc.form_data = JSON.parse(doc.form_data || '{}');
-            return doc;
-        });
-
-        res.json(documents);
+        res.json(queryRows(query, params).map(toDocument));
     } catch (error) {
         console.error('Error fetching documents:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get document by ID
-app.get('/api/documents/:id', (req, res) => {
+// Search documents
+app.get('/api/documents/search/:query', authenticateToken, (req, res) => {
     try {
-        const { id } = req.params;
-        const result = db.exec(`SELECT * FROM documents WHERE id = '${id}'`);
+        const like = `%${req.params.query.toLowerCase()}%`;
+        const documents = queryRows(`
+            SELECT * FROM documents
+            WHERE user_id = ?
+              AND (sorusturma_konusu LIKE ? OR ad_soyad LIKE ? OR sikayetci_adi LIKE ?
+                   OR tc_kimlik LIKE ? OR tanik_adi LIKE ?)
+            ORDER BY created_at DESC
+        `, [req.user.id, ...Array(5).fill(like)]);
 
-        if (result.length === 0 || result[0].values.length === 0) {
+        res.json(documents.map(toDocument));
+    } catch (error) {
+        console.error('Error searching documents:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get document by ID
+app.get('/api/documents/:id', authenticateToken, (req, res) => {
+    try {
+        const doc = findOwnDocument(req.params.id, req.user.id);
+        if (!doc) {
             return res.status(404).json({ error: 'Document not found' });
         }
-
-        const columns = result[0].columns;
-        const row = result[0].values[0];
-        const doc = {};
-        columns.forEach((col, i) => {
-            doc[col] = row[i];
-        });
-        doc.form_data = JSON.parse(doc.form_data || '{}');
-
-        res.json(doc);
+        res.json(toDocument(doc));
     } catch (error) {
         console.error('Error fetching document:', error);
         res.status(500).json({ error: error.message });
@@ -420,60 +427,21 @@ app.get('/api/documents/:id', (req, res) => {
 });
 
 // Create new document
-app.post('/api/documents', (req, res) => {
+app.post('/api/documents', authenticateToken, (req, res) => {
     try {
-        const {
-            template_code,
-            template_name,
-            category,
-            person_name,
-            event_date,
-            form_data,
-            user_id
-        } = req.body;
+        const { template_code, template_name, category, form_data } = req.body;
 
         const id = uuidv4();
         const now = new Date().toISOString();
-        const formDataStr = JSON.stringify(form_data).replace(/'/g, "''");
+        const common = extractCommonFields(form_data || {});
 
-        // Extract common fields for searchable columns
-        const common = extractCommonFields(form_data);
+        const columns = ['id', 'user_id', 'template_code', 'template_name', 'category',
+            ...SEARCHABLE_COLUMNS, 'form_data', 'created_at', 'updated_at'];
+        const values = [id, req.user.id, template_code, template_name, category || '',
+            ...SEARCHABLE_COLUMNS.map(col => common[col] || null),
+            JSON.stringify(form_data || {}), now, now];
 
-        db.run(`
-            INSERT INTO documents 
-            (id, user_id, template_code, template_name, category,
-             sorusturma_konusu, ad_soyad, tc_kimlik, tarih, saat, yer, kurum_adi, konum,
-             sikayetci_adi, sikayetci_tc, tanik_adi, muhakkik_adi, muhakkik_unvan,
-             mufettis1_ad_soyad, mufettis2_ad_soyad, ikametgah_adresi, telefon,
-             form_data, created_at, updated_at)
-            VALUES (
-                '${id}', 
-                ${user_id ? `'${user_id}'` : 'NULL'}, 
-                '${template_code}', 
-                '${template_name}', 
-                '${category || ''}',
-                ${common.sorusturma_konusu ? `'${common.sorusturma_konusu}'` : 'NULL'},
-                ${common.ad_soyad ? `'${common.ad_soyad}'` : 'NULL'},
-                ${common.tc_kimlik ? `'${common.tc_kimlik}'` : 'NULL'},
-                ${common.tarih ? `'${common.tarih}'` : 'NULL'},
-                ${common.saat ? `'${common.saat}'` : 'NULL'},
-                ${common.yer ? `'${common.yer}'` : 'NULL'},
-                ${common.kurum_adi ? `'${common.kurum_adi}'` : 'NULL'},
-                ${common.konum ? `'${common.konum}'` : 'NULL'},
-                ${common.sikayetci_adi ? `'${common.sikayetci_adi}'` : 'NULL'},
-                ${common.sikayetci_tc ? `'${common.sikayetci_tc}'` : 'NULL'},
-                ${common.tanik_adi ? `'${common.tanik_adi}'` : 'NULL'},
-                ${common.muhakkik_adi ? `'${common.muhakkik_adi}'` : 'NULL'},
-                ${common.muhakkik_unvan ? `'${common.muhakkik_unvan}'` : 'NULL'},
-                ${common.mufettis1_ad_soyad ? `'${common.mufettis1_ad_soyad}'` : 'NULL'},
-                ${common.mufettis2_ad_soyad ? `'${common.mufettis2_ad_soyad}'` : 'NULL'},
-                ${common.ikametgah_adresi ? `'${common.ikametgah_adresi}'` : 'NULL'},
-                ${common.telefon ? `'${common.telefon}'` : 'NULL'},
-                '${formDataStr}',
-                '${now}', 
-                '${now}'
-            )
-        `);
+        db.run(`INSERT INTO documents (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`, values);
 
         saveDatabase();
         console.log('✅ Document saved:', id, '- Person:', common.sorusturma_konusu || common.ad_soyad || common.sikayetci_adi);
@@ -485,34 +453,33 @@ app.post('/api/documents', (req, res) => {
 });
 
 // Update document
-app.put('/api/documents/:id', (req, res) => {
+app.put('/api/documents/:id', authenticateToken, (req, res) => {
     try {
         const { id } = req.params;
-        const { form_data, person_name } = req.body;
-        const now = new Date().toISOString();
+        const { form_data } = req.body;
 
-        // Check if document exists
-        const check = db.exec(`SELECT id FROM documents WHERE id = '${id}'`);
-        if (check.length === 0 || check[0].values.length === 0) {
+        if (!findOwnDocument(id, req.user.id)) {
             return res.status(404).json({ error: 'Document not found' });
         }
 
-        const formDataStr = form_data ? JSON.stringify(form_data).replace(/'/g, "''") : null;
-        const common = form_data ? extractCommonFields(form_data) : {};
+        const updateParts = ['updated_at = ?'];
+        const params = [new Date().toISOString()];
 
-        let updateParts = [`updated_at = '${now}'`];
-        if (formDataStr) updateParts.push(`form_data = '${formDataStr}'`);
-
-        // Update common columns if form_data changed
         if (form_data) {
-            if (common.sorusturma_konusu) updateParts.push(`sorusturma_konusu = '${common.sorusturma_konusu}'`);
-            if (common.ad_soyad) updateParts.push(`ad_soyad = '${common.ad_soyad}'`);
-            if (common.tc_kimlik) updateParts.push(`tc_kimlik = '${common.tc_kimlik}'`);
-            if (common.tarih) updateParts.push(`tarih = '${common.tarih}'`);
-            if (common.sikayetci_adi) updateParts.push(`sikayetci_adi = '${common.sikayetci_adi}'`);
+            updateParts.push('form_data = ?');
+            params.push(JSON.stringify(form_data));
+
+            // Update common columns if form_data changed
+            const common = extractCommonFields(form_data);
+            for (const col of ['sorusturma_konusu', 'ad_soyad', 'tc_kimlik', 'tarih', 'sikayetci_adi']) {
+                if (common[col]) {
+                    updateParts.push(`${col} = ?`);
+                    params.push(common[col]);
+                }
+            }
         }
 
-        db.run(`UPDATE documents SET ${updateParts.join(', ')} WHERE id = '${id}'`);
+        db.run(`UPDATE documents SET ${updateParts.join(', ')} WHERE id = ? AND user_id = ?`, [...params, id, req.user.id]);
 
         saveDatabase();
         res.json({ success: true });
@@ -523,58 +490,20 @@ app.put('/api/documents/:id', (req, res) => {
 });
 
 // Delete document
-app.delete('/api/documents/:id', (req, res) => {
+app.delete('/api/documents/:id', authenticateToken, (req, res) => {
     try {
         const { id } = req.params;
 
-        const check = db.exec(`SELECT id FROM documents WHERE id = '${id}'`);
-        if (check.length === 0 || check[0].values.length === 0) {
+        if (!findOwnDocument(id, req.user.id)) {
             return res.status(404).json({ error: 'Document not found' });
         }
 
-        db.run(`DELETE FROM documents WHERE id = '${id}'`);
+        db.run('DELETE FROM documents WHERE id = ? AND user_id = ?', [id, req.user.id]);
 
         saveDatabase();
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting document:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Search documents
-app.get('/api/documents/search/:query', (req, res) => {
-    try {
-        const { query } = req.params;
-        const search = query.toLowerCase();
-
-        const result = db.exec(`
-            SELECT * FROM documents 
-            WHERE sorusturma_konusu LIKE '%${search}%' 
-               OR ad_soyad LIKE '%${search}%' 
-               OR sikayetci_adi LIKE '%${search}%'
-               OR tc_kimlik LIKE '%${search}%'
-               OR tanik_adi LIKE '%${search}%'
-            ORDER BY created_at DESC
-        `);
-
-        if (result.length === 0) {
-            return res.json([]);
-        }
-
-        const columns = result[0].columns;
-        const documents = result[0].values.map(row => {
-            const doc = {};
-            columns.forEach((col, i) => {
-                doc[col] = row[i];
-            });
-            doc.form_data = JSON.parse(doc.form_data || '{}');
-            return doc;
-        });
-
-        res.json(documents);
-    } catch (error) {
-        console.error('Error searching documents:', error);
         res.status(500).json({ error: error.message });
     }
 });

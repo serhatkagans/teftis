@@ -273,6 +273,8 @@ const DataService = {
         const response = await fetch(`${this.apiBaseUrl}/documents?${params}`, {
             headers: this._getAuthHeaders()
         });
+        // Oturum düşmüşse sunucu hata nesnesi döner; liste bekleyen ekranlar bozulmasın
+        if (!response.ok) return [];
         return response.json();
     },
 
