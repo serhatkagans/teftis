@@ -5094,8 +5094,235 @@ function updatePreview() {
         html = renderTemplate161_dizi(data);
     }
 
-    elements.previewContent.innerHTML = html;
+    renderPaginatedPreview(elements.previewContent, html);
 }
+
+// =====================================================
+// A4 Sayfalı Önizleme
+// =====================================================
+
+// Önizleme, PDF ile aynı ölçülerde (A4, 15 mm kenar boşluğu) ayrı sayfalar
+// halinde gösterilir. İçerik tek bir akışta kalır; sayfa sınırına denk gelen
+// bloklar boşluk eklenerek sonraki sayfaya itilir, uzun paragraflar ise satır
+// sınırından ikiye bölünür.
+const A4_PAGE_W = 210;   // mm
+const A4_PAGE_H = 297;   // mm
+const A4_MARGIN = 15;    // mm (sunucu PDF kenar boşluğuyla aynı)
+const A4_GAP = 10;       // mm, önizlemede sayfalar arası boşluk
+const A4_STRIDE = A4_PAGE_H + A4_GAP;
+const A4_USABLE_H = A4_PAGE_H - 2 * A4_MARGIN;
+const A4_BLOCK_TAGS = new Set(['TABLE', 'IMG', 'SVG', 'CANVAS', 'HR', 'UL', 'OL']);
+
+function renderPaginatedPreview(root, html) {
+    if (!root) return;
+    root.classList.add('a4-preview');
+    root._previewHtml = html;
+    root.innerHTML = '<div class="a4-sheets"></div><div class="a4-flow"></div>';
+    root.querySelector('.a4-flow').innerHTML = html;
+
+    fitPreviewZoom(root);
+    paginatePreview(root);
+
+    // Görseller (logo vb.) sonradan yüklenirse yerleşim değişir; yeniden sayfala
+    root.querySelectorAll('.a4-flow img').forEach(img => {
+        if (!img.complete) {
+            img.addEventListener('load', () => {
+                if (root._previewHtml === html) renderPaginatedPreview(root, html);
+            }, { once: true });
+        }
+    });
+}
+
+// Önizleme panelinden geniş olan A4 sayfasını panele sığacak şekilde küçültür
+function fitPreviewZoom(root) {
+    root.style.zoom = '';
+    const container = root.parentElement;
+    if (!container) return;
+    const cs = getComputedStyle(container);
+    const available = container.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const pageWidthPx = A4_PAGE_W * 96 / 25.4;
+    if (available > 0 && available < pageWidthPx) {
+        root.style.zoom = String(available / pageWidthPx);
+    }
+}
+
+function previewHasBox(cs) {
+    const hasBorder = ['Top', 'Right', 'Bottom', 'Left'].some(side =>
+        cs['border' + side + 'Style'] !== 'none' && parseFloat(cs['border' + side + 'Width']) > 0);
+    const bg = cs.backgroundColor;
+    const hasBg = bg && bg !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(bg);
+    return hasBorder || hasBg;
+}
+
+function previewHasDirectText(el) {
+    return Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== '');
+}
+
+// Sayfa sınırında ayrı ayrı yerleştirilebilecek en küçük blokları toplar
+function collectPreviewBlocks(container, mmPx, out) {
+    Array.from(container.children).forEach(child => {
+        const cs = getComputedStyle(child);
+        if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') return;
+
+        const isPlainBlock = cs.display === 'block' || cs.display === 'list-item';
+        const atomic =
+            A4_BLOCK_TAGS.has(child.tagName.toUpperCase()) ||
+            !isPlainBlock ||
+            child.children.length === 0 ||
+            pdfIsInlineOnly(child) ||
+            previewHasDirectText(child) ||
+            // Çerçeveli/arka planlı kutular sayfaya sığıyorsa bölünmesin
+            (previewHasBox(cs) && child.getBoundingClientRect().height / mmPx <= A4_USABLE_H);
+
+        if (atomic) out.push(child);
+        else collectPreviewBlocks(child, mmPx, out);
+    });
+    return out;
+}
+
+// Satır içi içerikli bir bloğu, alt sınırı (px) aşan ilk satırdan böler.
+// Bölünme olursa yeni (devam) elemanı döndürür.
+function splitPreviewBlockAt(el, limitPx) {
+    const positions = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const text = node.textContent;
+        for (let i = 0; i < text.length; i++) {
+            if (!/\s/.test(text[i])) positions.push([node, i]);
+        }
+    }
+    if (positions.length < 2) return null;
+
+    const range = document.createRange();
+    const bottomOf = ([node, i]) => {
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        return range.getBoundingClientRect().bottom;
+    };
+
+    // Taşan ilk karakteri ikili arama ile bul (satırlar yukarıdan aşağı sıralı)
+    let lo = 0, hi = positions.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (bottomOf(positions[mid]) > limitPx) hi = mid;
+        else lo = mid + 1;
+    }
+    if (lo === 0 || lo >= positions.length) return null;
+
+    const [node, offset] = positions[lo];
+    range.setStart(node, offset);
+    range.setEnd(el, el.childNodes.length);
+    const rest = range.extractContents();
+
+    const cont = el.cloneNode(false);
+    cont.removeAttribute('id');
+    cont.appendChild(rest);
+    cont.style.textIndent = '0';
+    cont.style.marginTop = '0';
+    el.style.marginBottom = '0';
+    el.style.paddingBottom = '0';
+    cont.style.paddingTop = '0';
+    // İki yana yaslı paragrafın bölünen son satırı da yaslı kalsın
+    if (getComputedStyle(el).textAlign === 'justify') el.style.textAlignLast = 'justify';
+    el.after(cont);
+    return cont;
+}
+
+// Bloğun üst kenarını hedef konuma (mm, akışa göre) itecek boşluk ekler
+function pushPreviewBlockTo(el, targetMm, originPx, mmPx) {
+    const spacer = document.createElement('div');
+    spacer.className = 'a4-spacer';
+    el.parentNode.insertBefore(spacer, el);
+    // Kenar boşluğu (margin) birleşmeleri nedeniyle iki adımda ölçerek ayarla
+    let height = 0;
+    for (let i = 0; i < 2; i++) {
+        const top = (el.getBoundingClientRect().top - originPx) / mmPx;
+        height = Math.max(0, height + (targetMm - top));
+        spacer.style.height = height + 'mm';
+    }
+}
+
+function paginatePreview(root) {
+    const flow = root.querySelector('.a4-flow');
+    const sheets = root.querySelector('.a4-sheets');
+    if (!flow || !sheets) return;
+
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute; visibility:hidden; height:100mm; width:1px;';
+    flow.appendChild(probe);
+    const mmPx = probe.getBoundingClientRect().height / 100;
+    probe.remove();
+    if (!mmPx) return; // görünmez panel; ölçüm yapılamaz
+
+    const originPx = flow.getBoundingClientRect().top;
+    const toMm = px => (px - originPx) / mmPx;
+    const blocks = collectPreviewBlocks(flow, mmPx, []);
+    const EPS = 0.3;
+
+    for (let i = 0; i < blocks.length; i++) {
+        const el = blocks[i];
+        if (el.getBoundingClientRect().height === 0) continue;
+
+        let top = toMm(el.getBoundingClientRect().top);
+        const page = Math.floor(top / A4_STRIDE);
+        const usableStart = page * A4_STRIDE + A4_MARGIN;
+        const usableEnd = page * A4_STRIDE + A4_PAGE_H - A4_MARGIN;
+
+        // Blok alt kenar boşluğunda / sayfalar arasında başlıyorsa sonraki sayfaya
+        if (top >= usableEnd - EPS) {
+            pushPreviewBlockTo(el, (page + 1) * A4_STRIDE + A4_MARGIN, originPx, mmPx);
+            continue;
+        }
+        // Üst kenar boşluğunda başlıyorsa yazı alanının başına indir
+        if (top < usableStart - EPS) {
+            pushPreviewBlockTo(el, usableStart, originPx, mmPx);
+            top = toMm(el.getBoundingClientRect().top);
+        }
+        const bottom = toMm(el.getBoundingClientRect().bottom);
+        if (bottom <= usableEnd + EPS) continue;
+
+        // Sayfa sınırını aşıyor: önce satır sınırından bölmeyi dene
+        const cs = getComputedStyle(el);
+        const splittable = (cs.display === 'block' || cs.display === 'list-item') &&
+            !A4_BLOCK_TAGS.has(el.tagName.toUpperCase()) && pdfIsInlineOnly(el);
+        if (splittable) {
+            const cont = splitPreviewBlockAt(el, originPx + usableEnd * mmPx);
+            if (cont) {
+                blocks.splice(i + 1, 0, cont);
+                continue;
+            }
+        }
+
+        // Bölünemiyorsa ve tek sayfaya sığıyorsa bütün olarak sonraki sayfaya taşı
+        if (bottom - top <= A4_USABLE_H && top > usableStart + EPS) {
+            pushPreviewBlockTo(el, (page + 1) * A4_STRIDE + A4_MARGIN, originPx, mmPx);
+        }
+    }
+
+    // Sayfa arka planlarını çiz
+    const lastBottom = toMm(flow.getBoundingClientRect().bottom) - A4_MARGIN;
+    const pageCount = Math.max(1, Math.floor(Math.max(0, lastBottom - EPS) / A4_STRIDE) + 1);
+    const totalH = pageCount * A4_STRIDE - A4_GAP;
+    flow.style.minHeight = totalH + 'mm';
+    root.style.height = (pageCount * A4_STRIDE) + 'mm'; // son sayfa numarası için alt boşluk dahil
+    let sheetsHtml = '';
+    for (let p = 0; p < pageCount; p++) {
+        sheetsHtml += `<div class="a4-sheet" style="top:${p * A4_STRIDE}mm"><span class="a4-page-no">${p + 1} / ${pageCount}</span></div>`;
+    }
+    sheets.innerHTML = sheetsHtml;
+}
+
+// Pencere boyutu değişince önizlemeleri yeniden ölçekle ve sayfala
+let previewResizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(previewResizeTimer);
+    previewResizeTimer = setTimeout(() => {
+        document.querySelectorAll('.a4-preview').forEach(root => {
+            if (root._previewHtml !== undefined) renderPaginatedPreview(root, root._previewHtml);
+        });
+    }, 150);
+});
 
 function renderTemplate11(data) {
     // Format dilekce date

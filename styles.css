@@ -557,6 +557,57 @@ textarea {
     overflow-wrap: break-word;
 }
 
+/* A4 sayfalı önizleme (app.js: renderPaginatedPreview) */
+.preview-content.a4-preview {
+    position: relative;
+    width: 210mm;
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    box-sizing: border-box;
+}
+
+.a4-preview .a4-sheets {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.a4-preview .a4-sheet {
+    position: absolute;
+    left: 0;
+    width: 210mm;
+    height: 297mm;
+    background: #fff;
+    box-shadow: var(--shadow-lg);
+}
+
+.a4-preview .a4-page-no {
+    position: absolute;
+    right: 0;
+    bottom: -8mm;
+    font-family: "Inter", sans-serif;
+    font-size: 9pt;
+    color: #888;
+}
+
+.a4-preview .a4-flow {
+    position: relative;
+    z-index: 1;
+    width: 210mm;
+    padding: 15mm;
+    box-sizing: border-box;
+}
+
+.a4-preview .a4-spacer {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
 /* Preview Styles */
 .preview-content .header {
     text-align: center;

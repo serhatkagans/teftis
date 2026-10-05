@@ -1097,7 +1097,8 @@ async function renderDocumentDetailPage(documentId) {
         else html = `<div class="empty-field">Bu şablon (${doc.template_code}) için önizleme görüntülenemiyor.</div>`;
 
         // Wrap in preview-content to match the live preview styling (A4 size, word-wrap, etc.)
-        previewContainer.innerHTML = `<div class="preview-content">${html}</div>`;
+        previewContainer.innerHTML = '<div class="preview-content"></div>';
+        renderPaginatedPreview(previewContainer.querySelector('.preview-content'), html);
     }
 
     // Update breadcrumb
