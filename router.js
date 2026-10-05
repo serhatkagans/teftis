@@ -195,6 +195,8 @@ function updateSessionTimer() {
                 // Auto logout and redirect to login
                 if (remaining < -2000) { // Buffer 2 sec
                     clearInterval(sessionTimerInterval);
+                    // Kaydedilmemiş form taslak olarak saklanır; tekrar girişte geri yüklenebilir
+                    flushDraftAndStop();
                     AuthService.logout();
                     window.location.hash = '#/login';
                     window.location.reload();
@@ -926,14 +928,16 @@ async function initializeTemplateForm(templateCode, editDocumentId = null) {
         loadTemplate(templateCode);
 
         // Edit mode: load existing document data
+        let editData = null;
         if (editDocumentId) {
             const document = await loadDocumentForEdit(editDocumentId);
-            if (document && document.form_data) {
-                setTimeout(() => {
-                    fillFormWithData(document.form_data);
-                }, 100);
-            }
+            if (document && document.form_data) editData = document.form_data;
         }
+        setTimeout(() => {
+            if (editData) fillFormWithData(editData);
+            // Kaydedilmemiş değişiklikleri taslak olarak izle (doldurma bittikten sonra)
+            setTimeout(() => startDraftTracking(templateCode, editDocumentId), 100);
+        }, 100);
     }
 }
 

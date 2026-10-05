@@ -6657,6 +6657,7 @@ async function saveDocument() {
             // Update existing document
             result = await DataService.update(documentId, documentData);
             if (result.success) {
+                clearCurrentDraft();
                 showToast('Belge güncellendi', 'success');
                 // Navigate to document detail
                 navigateTo(`documents/${documentId}`);
@@ -6667,6 +6668,7 @@ async function saveDocument() {
             // Create new document
             result = await DataService.save(documentData);
             if (result.id) {
+                clearCurrentDraft();
                 showToast('Belge kaydedildi', 'success');
                 // Navigate to document detail
                 navigateTo(`documents/${result.id}`);
@@ -6685,6 +6687,173 @@ async function saveDocument() {
             : '<span>💾</span> Kaydet';
     }
 }
+
+// =====================================================
+// Taslak (otomatik kayıt)
+// =====================================================
+
+// Kaydedilmemiş form verileri tarayıcıda kullanıcı + şablon + belge bazında
+// saklanır; oturum süresi dolduğunda veya sayfa kapandığında iş kaybolmaz.
+// Şablon yeniden açılınca taslağı geri yükleme seçeneği sunulur.
+const DRAFT_PREFIX = 'teftis_draft:';
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 günden eski taslaklar silinir
+const draftState = { key: null, baseline: null, timer: null, interval: null };
+
+function draftKeyFor(templateCode, documentId) {
+    const user = typeof AuthService !== 'undefined' ? AuthService.getCurrentUser() : null;
+    if (!user || !user.id) return null;
+    return `${DRAFT_PREFIX}${user.id}:${templateCode}:${documentId || 'yeni'}`;
+}
+
+function readDraft(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function removeDraft(key) {
+    try { localStorage.removeItem(key); } catch (e) { /* yoksay */ }
+}
+
+function purgeOldDrafts() {
+    try {
+        const now = Date.now();
+        Object.keys(localStorage).forEach(key => {
+            if (!key.startsWith(DRAFT_PREFIX)) return;
+            const draft = readDraft(key);
+            if (!draft || !draft.savedAt || now - new Date(draft.savedAt).getTime() > DRAFT_MAX_AGE_MS) {
+                removeDraft(key);
+            }
+        });
+    } catch (e) { /* yoksay */ }
+}
+
+function currentFormSnapshot() {
+    if (!elements.form || !elements.form.isConnected) return null;
+    return JSON.stringify(collectFormData());
+}
+
+function isFormDirty() {
+    if (!draftState.key) return false;
+    const snapshot = currentFormSnapshot();
+    return snapshot !== null && snapshot !== draftState.baseline;
+}
+
+function saveDraftNow() {
+    if (!draftState.key) return;
+    const snapshot = currentFormSnapshot();
+    if (snapshot === null) {
+        stopDraftTracking();
+        return;
+    }
+    if (snapshot === draftState.baseline) return;
+    try {
+        localStorage.setItem(draftState.key, JSON.stringify({
+            savedAt: new Date().toISOString(),
+            data: JSON.parse(snapshot)
+        }));
+    } catch (e) {
+        console.warn('Taslak kaydedilemedi:', e);
+    }
+}
+
+function scheduleDraftSave() {
+    clearTimeout(draftState.timer);
+    draftState.timer = setTimeout(saveDraftNow, 1000);
+}
+
+function stopDraftTracking() {
+    clearTimeout(draftState.timer);
+    clearInterval(draftState.interval);
+    draftState.key = null;
+    draftState.baseline = null;
+}
+
+// Kayıt başarılı olunca taslağı sil
+function clearCurrentDraft() {
+    if (draftState.key) removeDraft(draftState.key);
+    stopDraftTracking();
+}
+
+function showDraftBanner(draft) {
+    const form = elements.form;
+    if (!form || !form.parentNode) return;
+    const old = document.getElementById('draftBanner');
+    if (old) old.remove();
+
+    const savedAt = new Date(draft.savedAt).toLocaleString('tr-TR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    const banner = document.createElement('div');
+    banner.id = 'draftBanner';
+    banner.className = 'draft-banner';
+    banner.innerHTML = `
+        <span>📝 Bu form için kaydedilmemiş bir taslak bulundu (${escapeHtml(savedAt)}).</span>
+        <span class="draft-banner-actions">
+            <button type="button" class="btn btn-sm btn-primary" data-action="restore">Geri yükle</button>
+            <button type="button" class="btn btn-sm btn-secondary" data-action="discard">Sil</button>
+        </span>`;
+    banner.addEventListener('click', e => {
+        const action = e.target.closest('button')?.dataset.action;
+        if (!action) return;
+        if (action === 'restore') {
+            fillFormWithData(draft.data);
+            setTimeout(updatePreview, 50);
+            showToast('Taslak geri yüklendi', 'success');
+        } else {
+            removeDraft(draftState.key);
+        }
+        banner.remove();
+    });
+    form.parentNode.insertBefore(banner, form);
+}
+
+// Şablon formu yüklendikten (ve düzenleme modunda veriler doldurulduktan) sonra çağrılır
+function startDraftTracking(templateCode, documentId) {
+    stopDraftTracking();
+    purgeOldDrafts();
+    const key = draftKeyFor(templateCode, documentId);
+    if (!key || !elements.form) return;
+
+    draftState.key = key;
+    draftState.baseline = currentFormSnapshot();
+
+    const draft = readDraft(key);
+    if (draft && draft.data && JSON.stringify(draft.data) !== draftState.baseline) {
+        showDraftBanner(draft);
+    }
+
+    const form = elements.form;
+    form.addEventListener('input', scheduleDraftSave);
+    form.addEventListener('change', scheduleDraftSave);
+    // Soru ekleme/silme gibi input olayı üretmeyen değişiklikler için
+    draftState.interval = setInterval(saveDraftNow, 5000);
+}
+
+// Oturum kapanmadan / sayfadan çıkmadan önce taslağı kaydet ve izlemeyi bırak
+function flushDraftAndStop() {
+    saveDraftNow();
+    stopDraftTracking();
+}
+
+function handleLogout() {
+    flushDraftAndStop();
+    AuthService.logout();
+}
+
+// Başka sayfaya geçerken (router DOM'u değiştirmeden önce) son durumu kaydet
+window.addEventListener('hashchange', saveDraftNow);
+
+window.addEventListener('beforeunload', e => {
+    if (isFormDirty()) {
+        saveDraftNow();
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 /**
  * Load document for editing
