@@ -556,16 +556,56 @@ function getPdfBrowser() {
     return pdfBrowserPromise;
 }
 
+// Aynı anda en fazla bu kadar PDF üretilir; fazlası sırada bekler
+const PDF_MAX_CONCURRENT = 2;
+const PDF_MAX_QUEUE = 20;
+let pdfActive = 0;
+const pdfQueue = [];
+
+function acquirePdfSlot() {
+    if (pdfActive < PDF_MAX_CONCURRENT) {
+        pdfActive++;
+        return Promise.resolve();
+    }
+    if (pdfQueue.length >= PDF_MAX_QUEUE) {
+        return Promise.reject(Object.assign(new Error('Sunucu meşgul, lütfen tekrar deneyin'), { status: 503 }));
+    }
+    return new Promise(resolve => pdfQueue.push(resolve));
+}
+
+function releasePdfSlot() {
+    const next = pdfQueue.shift();
+    if (next) next();
+    else pdfActive--;
+}
+
 app.post('/api/pdf', authenticateToken, async (req, res) => {
     const { html } = req.body || {};
     if (!html || typeof html !== 'string') {
         return res.status(400).json({ error: 'html alanı gerekli' });
     }
 
+    try {
+        await acquirePdfSlot();
+    } catch (error) {
+        return res.status(error.status || 503).json({ error: error.message });
+    }
+
     let page;
     try {
         const browser = await getPdfBrowser();
         page = await browser.newPage();
+
+        // Gelen HTML kullanıcı girdisidir: içinde betik çalışmasın ve sayfa
+        // sunucunun iç ağına/dosyalarına istek atamasın (SSRF). Yalnızca
+        // gömülü (data:) kaynaklara izin verilir.
+        await page.setJavaScriptEnabled(false);
+        await page.setRequestInterception(true);
+        page.on('request', request => {
+            const url = request.url();
+            if (url.startsWith('data:') || url === 'about:blank') request.continue();
+            else request.abort('blockedbyclient');
+        });
 
         const fullHtml = `<!DOCTYPE html>
 <html lang="tr">
@@ -599,11 +639,12 @@ app.post('/api/pdf', authenticateToken, async (req, res) => {
         res.send(Buffer.from(pdf));
     } catch (error) {
         console.error('PDF generation error:', error);
-        res.status(500).json({ error: 'PDF üretilemedi: ' + error.message });
+        res.status(500).json({ error: 'PDF üretilemedi' });
     } finally {
         if (page) {
             try { await page.close(); } catch (e) { /* yoksay */ }
         }
+        releasePdfSlot();
     }
 });
 
