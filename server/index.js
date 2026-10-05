@@ -13,14 +13,45 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'teftis-app-secret-key-2024';
+const JWT_SECRET = loadJwtSecret();
 const JWT_EXPIRES_IN = '40m';
+// Yeni hesap açma varsayılan olarak kapalıdır. Kullanıcı eklemek için
+// ALLOW_REGISTRATION=true verilir; hiç kullanıcı yoksa ilk hesap açılabilir.
+const ALLOW_REGISTRATION = process.env.ALLOW_REGISTRATION === 'true';
+
+// JWT anahtarı .env'de yoksa rastgele üretilip server/.jwt_secret dosyasında
+// saklanır (yeniden başlatmada oturumlar düşmesin). Koddaki sabit bir anahtar
+// herkesçe bilinir ve sahte oturum üretmeye izin verir.
+function loadJwtSecret() {
+    if (process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32) {
+        return process.env.JWT_SECRET;
+    }
+    if (process.env.JWT_SECRET) {
+        console.warn('⚠️  JWT_SECRET en az 32 karakter olmalı; server/.jwt_secret kullanılıyor');
+    }
+    const secretPath = path.join(__dirname, '.jwt_secret');
+    if (fs.existsSync(secretPath)) {
+        return fs.readFileSync(secretPath, 'utf8').trim();
+    }
+    const secret = crypto.randomBytes(48).toString('hex');
+    fs.writeFileSync(secretPath, secret, { mode: 0o600 });
+    console.log('🔑 Yeni JWT anahtarı üretildi:', secretPath);
+    return secret;
+}
+
+// Nginx gibi yerel bir ters vekil arkasında gerçek istemci IP'si (deneme sınırı için)
+app.set('trust proxy', 'loopback');
 
 // Middleware
-app.use(cors());
+// Arayüz aynı adresten sunulduğu için CORS gerekmez; başka bir kaynaktan
+// erişilecekse CORS_ORIGIN=https://ornek.gov.tr,https://... ile izin verilir.
+if (process.env.CORS_ORIGIN) {
+    app.use(cors({ origin: process.env.CORS_ORIGIN.split(',').map(o => o.trim()) }));
+}
 app.use(express.json({ limit: '10mb' }));
 
 // Sunucu kodu, veritabanı ve bağımlılıklar dışarıya açılmasın
@@ -217,9 +248,60 @@ function optionalAuth(req, res, next) {
 // Auth API Routes
 // =====================================================
 
+// Başarısız giriş/kayıt denemelerini IP + kullanıcı adı bazında sınırla
+// (kaba kuvvet ile şifre denemesine karşı)
+const AUTH_MAX_FAILURES = 10;
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const authFailures = new Map();
+
+function authLimitKey(req) {
+    const username = String((req.body && req.body.username) || '').toLowerCase();
+    return `${req.ip}|${username}`;
+}
+
+function isAuthLimited(req) {
+    const entry = authFailures.get(authLimitKey(req));
+    if (!entry) return false;
+    if (Date.now() - entry.first > AUTH_WINDOW_MS) {
+        authFailures.delete(authLimitKey(req));
+        return false;
+    }
+    return entry.count >= AUTH_MAX_FAILURES;
+}
+
+function recordAuthFailure(req) {
+    const key = authLimitKey(req);
+    const entry = authFailures.get(key);
+    if (!entry || Date.now() - entry.first > AUTH_WINDOW_MS) {
+        authFailures.set(key, { count: 1, first: Date.now() });
+    } else {
+        entry.count++;
+    }
+}
+
+// Süresi geçen kayıtları ara ara temizle
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of authFailures) {
+        if (now - entry.first > AUTH_WINDOW_MS) authFailures.delete(key);
+    }
+}, AUTH_WINDOW_MS).unref();
+
+const TOO_MANY_ATTEMPTS = { error: 'Çok fazla başarısız deneme. Lütfen 15 dakika sonra tekrar deneyin.' };
+
 // Register new user
 app.post('/api/auth/register', async (req, res) => {
     try {
+        if (isAuthLimited(req)) {
+            return res.status(429).json(TOO_MANY_ATTEMPTS);
+        }
+
+        // İlk hesap her zaman açılabilir; sonrası yalnızca ALLOW_REGISTRATION=true iken
+        const hasUsers = queryRows('SELECT id FROM users WHERE password IS NOT NULL LIMIT 1').length > 0;
+        if (hasUsers && !ALLOW_REGISTRATION) {
+            return res.status(403).json({ error: 'Yeni hesap açma kapalı. Hesap için sistem yöneticinize başvurun.' });
+        }
+
         const { username, password, name, email } = req.body;
 
         if (!username || !password || !name) {
@@ -232,6 +314,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Check if username exists
         if (queryRows('SELECT id FROM users WHERE username = ?', [username]).length > 0) {
+            recordAuthFailure(req);
             return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor' });
         }
 
@@ -258,7 +341,7 @@ app.post('/api/auth/register', async (req, res) => {
         });
     } catch (error) {
         console.error('Register error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -271,15 +354,21 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli' });
         }
 
+        if (isAuthLimited(req)) {
+            return res.status(429).json(TOO_MANY_ATTEMPTS);
+        }
+
         // Find user
         const user = queryRows('SELECT * FROM users WHERE username = ?', [username])[0];
         if (!user || !user.password) {
+            recordAuthFailure(req);
             return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı' });
         }
 
         // Check password
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
+            recordAuthFailure(req);
             return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı' });
         }
 
@@ -298,7 +387,7 @@ app.post('/api/auth/login', async (req, res) => {
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -331,7 +420,7 @@ app.post('/api/auth/extend', authenticateToken, (req, res) => {
         });
     } catch (error) {
         console.error('Extend error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -389,7 +478,7 @@ app.get('/api/documents', authenticateToken, (req, res) => {
         res.json(queryRows(query, params).map(toDocument));
     } catch (error) {
         console.error('Error fetching documents:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -408,7 +497,7 @@ app.get('/api/documents/search/:query', authenticateToken, (req, res) => {
         res.json(documents.map(toDocument));
     } catch (error) {
         console.error('Error searching documents:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -422,7 +511,7 @@ app.get('/api/documents/:id', authenticateToken, (req, res) => {
         res.json(toDocument(doc));
     } catch (error) {
         console.error('Error fetching document:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -448,7 +537,7 @@ app.post('/api/documents', authenticateToken, (req, res) => {
         res.status(201).json({ id });
     } catch (error) {
         console.error('Error creating document:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -485,7 +574,7 @@ app.put('/api/documents/:id', authenticateToken, (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error updating document:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 
@@ -504,7 +593,7 @@ app.delete('/api/documents/:id', authenticateToken, (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting document:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
 

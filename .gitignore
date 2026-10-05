@@ -6,3 +6,4 @@ server/.env
 server/teftis.db
 .claude/
 *.log
+server/.jwt_secret

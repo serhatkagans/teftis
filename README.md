@@ -26,3 +26,10 @@ sudo apt install -y chromium   # veya google-chrome-stable
 ```
 Chrome otomatik bulunamazsa `server/.env` içinde `CHROME_PATH` ayarlayın.
 Sürekli çalışması için `pm2 start server/index.js --name teftis` kullanılabilir.
+
+## Güvenlik ayarları (`server/.env`)
+- **Kullanıcı ekleme:** Yeni hesap açma varsayılan olarak kapalıdır; yalnızca ilk kullanıcı kendi kendine kayıt olabilir.
+  Yeni kullanıcı eklemek için `ALLOW_REGISTRATION=true` verip sunucuyu yeniden başlatın, kayıtlar bitince kaldırın.
+- **JWT_SECRET:** En az 32 karakter olmalı. Verilmezse ilk çalıştırmada üretilip `server/.jwt_secret` dosyasında saklanır.
+- **Giriş denemesi:** Aynı IP + kullanıcı adıyla 15 dakikada 10 başarısız denemeden sonra giriş geçici olarak engellenir.
+- **CORS:** Varsayılan kapalı (arayüz aynı adresten sunulur). Gerekirse `CORS_ORIGIN` ile izin verin.
