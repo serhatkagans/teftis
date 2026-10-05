@@ -10,7 +10,7 @@ const AuthService = {
     // Configuration
     // =====================================================
 
-    apiBaseUrl: 'http://localhost:4000/api/auth',
+    apiBaseUrl: 'api/auth',
     tokenKey: 'auth_token',
     userKey: 'auth_user',
 

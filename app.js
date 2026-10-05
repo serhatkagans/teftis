@@ -5386,7 +5386,7 @@ function pdfProtectFlexBlocks(root) {
 async function generatePDFOnServer(contentEl, filename) {
     try {
         pdfProtectFlexBlocks(contentEl);
-        const response = await fetch('/api/pdf', {
+        const response = await fetch('api/pdf', {
             method: 'POST',
             headers: Object.assign({ 'Content-Type': 'application/json' }, AuthService.getAuthHeaders()),
             body: JSON.stringify({ html: contentEl.outerHTML })

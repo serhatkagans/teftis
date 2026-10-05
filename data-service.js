@@ -21,7 +21,7 @@ const DataService = {
     mode: 'api',
 
     // API Base URL
-    apiBaseUrl: 'http://localhost:4000/api',
+    apiBaseUrl: 'api',
 
     // Storage key for localStorage (fallback)
     storageKey: 'documents',
