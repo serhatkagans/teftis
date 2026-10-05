@@ -4903,6 +4903,30 @@ function updateWrittenQuestionNumbers() {
 // Form Data Collection
 // =====================================================
 
+// Form verileri şablonlarda doğrudan HTML'e yazılır. Kullanıcının girdiği
+// "<", "&" gibi karakterler HTML olarak yorumlanmasın (betik çalıştırılamasın)
+// diye önizleme ve PDF'ten önce tüm metin değerleri kaçışlanır. Kaydetme ve
+// Word üretimi ham veriyi kullanmaya devam eder.
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeFormData(value) {
+    if (typeof value === 'string') return escapeHtml(value);
+    if (Array.isArray(value)) return value.map(escapeFormData);
+    if (value && typeof value === 'object') {
+        const out = {};
+        Object.keys(value).forEach(key => { out[key] = escapeFormData(value[key]); });
+        return out;
+    }
+    return value;
+}
+
 function collectFormData() {
     const formData = new FormData(elements.form);
     const data = {};
@@ -4972,7 +4996,7 @@ function collectFormData() {
 // =====================================================
 
 function updatePreview() {
-    const data = collectFormData();
+    const data = escapeFormData(collectFormData());
     const template = TEMPLATES[state.currentTemplate];
 
     let html = '';
@@ -5631,6 +5655,90 @@ async function generatePDFOnServer(contentEl, filename) {
     }
 }
 
+// Şablon kodu → PDF içeriği üreten fonksiyon ve indirilen dosyanın adı.
+// Hem form ekranı (generatePDF) hem kayıtlı belgeler (router.js) bunu kullanır.
+const PDF_TEMPLATES = {
+    '1.1': { build: data => createPDFContent11(data), name: 'sikayetci_ifade_tutanagi' },
+    '1.2': { build: data => createPDFContent12(data, false), name: 'tanik_ifade_tutanagi_yeminsiz' },
+    '1.3': { build: data => createPDFContent12(data, true), name: 'tanik_ifade_tutanagi_yeminli' },
+    '1.4.1': { build: data => createPDFContent141(data), name: 'yazili_ifade_tutanagi' },
+    '1.4.2': { build: data => createPDFContent142(data), name: 'yazili_ifade_tutanagi_ogrenci' },
+    '1.5': { build: data => createPDFContent15(data), name: 'itham_ifade_tutanagi' },
+    '1.6.1': { build: data => createPDFContent161(data), name: 'on_inceleme_ifade_mudafisiz' },
+    '1.6.2': { build: data => createPDFContent162(data), name: 'on_inceleme_mudafi_istegi' },
+    '1.6.3': { build: data => createPDFContent163(data), name: 'on_inceleme_mudafi_atama_istegi' },
+    '1.6.4': { build: data => createPDFContent164(data), name: 'on_inceleme_baro_yazisi' },
+    '1.6.5': { build: data => createPDFContent165(data), name: 'on_inceleme_ifade_mudafili' },
+    '2.1': { build: data => createPDFContent21(data), name: 'cagri_kagidi_tanik' },
+    '2.3': { build: data => createPDFContent23(data), name: 'teblig_tebellug_tutanagi' },
+    '2.4': { build: data => createPDFContent24(data), name: 'zorla_getirme_yazisi' },
+    '3.1': { build: data => createPDFContent31(data), name: 'ihbar_sikayet_tespit' },
+    '4.1': { build: data => createPDFContent41(data), name: 'bilgi_belge_isteme' },
+    '4.2': { build: data => createPDFContent42(data), name: 'bilgi_belge_isteme_varyant2' },
+    '4.3': { build: data => createPDFContent43(data), name: 'dosya_bilgi_belge_isteme' },
+    '4.4': { build: data => createPDFContent44(data), name: 'bassavcilik_bilgi_belge_isteme' },
+    '5.1': { build: data => createPDFContent51(data), name: 'bilirkisi_gorevlendirme' },
+    '5.2': { build: data => createPDFContent52(data), name: 'bilirkisi_gorevlendirme_yazisi' },
+    '5.3': { build: data => createPDFContent53(data), name: 'bilirkisi_ucret_odeme' },
+    '6.1': { build: data => createPDFContent61(data), name: 'gorevden_uzaklastirma_oluru' },
+    '6.2': { build: data => createPDFContent62(data), name: 'gorevden_uzaklastirma_kaldirma_oluru' },
+    '6.3': { build: data => createPDFContent63(data), name: 'gorevden_uzaklastirma_tedbiri' },
+    '6.4': { build: data => createPDFContent64(data), name: 'gorevden_uzaklastirma_kaldirma_teklifi' },
+    '6.5': { build: data => createPDFContent65(data), name: 'gorevden_uzaklastirma_kaldirma_oluru' },
+    '6.6': { build: data => createPDFContent66(data), name: 'gorevden_uzaklastirma_bildirimi' },
+    '6.7': { build: data => createPDFContent67(data), name: 'gorevden_uzaklastirma_mulki_amir' },
+    '6.8': { build: data => createPDFContent68(data), name: 'gorevden_uzaklastirma_kurum' },
+    '6.9': { build: data => createPDFContent69(data), name: 'gorevden_uzaklastirma_teblig' },
+    '7.1': { build: data => createPDFContent71(data), name: 'naip_tayin_tanik' },
+    '7.2': { build: data => createPDFContent72(data), name: 'istinabe_talimati_tanik' },
+    '7.3': { build: data => createPDFContent73(data), name: 'naip_tayin_itham' },
+    '7.4': { build: data => createPDFContent74(data), name: 'istinabe_talimati_itham' },
+    '8.1': { build: data => createPDFContent81(data), name: 'yetkilendirme_karari' },
+    '8.2': { build: data => createPDFContent82(data), name: 'ifade_alma_esaslari' },
+    '9.1': { build: data => createPDFContent91(data), name: 'elkoyma_tutanagi' },
+    '10.1': { build: data => createPDFContent101(data), name: 'imza_yazi_tespiti' },
+    '10.2': { build: data => createPDFContent102(data), name: 'imza_yazi_tespit_tutanagi' },
+    '10.2.1': { build: data => createPDFContent1021(data), name: 'imza_yazi_ornegi_formu' },
+    '11.1': { build: data => createPDFContent111(data), name: 'on_rapor_kapagi' },
+    '11.2': { build: data => createPDFContent112(data), name: 'on_rapor' },
+    '12.1': { build: data => createPDFContent121(data), name: 'olur_istek_denetim' },
+    '12.2': { build: data => createPDFContent122(data), name: 'olur_istek_inceleme' },
+    '13.1': { build: data => createPDFContent131(data), name: 'inceleme_sorusturma_kapagi' },
+    '13.2': { build: data => createPDFContent132(data), name: 'inceleme_sorusturma_raporu' },
+    '14.1': { build: data => createPDFContent1401(data), name: 'on_inceleme_raporu_kapagi' },
+    '14.2': { build: data => createPDFContent1402(data), name: 'on_inceleme_raporu' },
+    '15.1': { build: data => createPDFContent151(data), name: 'suc_duyurusu_kapagi' },
+    '15.2': { build: data => createPDFContent152(data), name: 'suc_duyurusu_raporu' },
+    '15.3': { build: data => createPDFContent153(data), name: 'diger_bakanlik_suc_duyurusu_kapagi' },
+    '15.4': { build: data => createPDFContent154(data), name: 'diger_bakanlik_suc_duyurusu_raporu' },
+    '15.5': { build: data => createPDFContent155(data), name: 'tevdi_raporu_kapagi' },
+    '2.2': { build: data => createPDFContent22(data), name: 'cagri_kagidi_on_inceleme_tanik' },
+    '15.6': { build: data => createPDFContent156(data), name: 'tevdi_yazisi_raporu' },
+    '16.1': { build: data => createPDFContent161_dizi(data), name: 'dizi_pusulasi' },
+};
+
+// PDF içeriğini indirir: önce sunucuda Chrome yazdırma motoruyla üretir,
+// ulaşılamazsa tarayıcı içi html2pdf yöntemine geri düşer.
+async function downloadPDF(pdfContent, filename) {
+    const serverOk = await generatePDFOnServer(pdfContent, filename);
+
+    if (!serverOk) {
+        // Sayfa sınırında satırların ortadan kesilmesini önle
+        optimizePdfPageBreaks(pdfContent);
+
+        const opt = {
+            margin: [15, 15, 15, 15],
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+        };
+
+        await html2pdf().set(opt).from(pdfContent).save();
+    }
+}
+
 async function generatePDF() {
     // Auth kontrolü - giriş yapmamış kullanıcılar PDF üretemez
     if (!AuthService || !AuthService.isLoggedIn()) {
@@ -5648,173 +5756,9 @@ async function generatePDF() {
 
     try {
         const data = collectFormData();
-        let pdfContent;
-        let templateName;
-
-        if (state.currentTemplate === '1.1') {
-            pdfContent = createPDFContent11(data);
-            templateName = 'sikayetci_ifade_tutanagi';
-        } else if (state.currentTemplate === '1.2') {
-            pdfContent = createPDFContent12(data, false);
-            templateName = 'tanik_ifade_tutanagi_yeminsiz';
-        } else if (state.currentTemplate === '1.3') {
-            pdfContent = createPDFContent12(data, true);
-            templateName = 'tanik_ifade_tutanagi_yeminli';
-        } else if (state.currentTemplate === '1.4.1') {
-            pdfContent = createPDFContent141(data);
-            templateName = 'yazili_ifade_tutanagi';
-        } else if (state.currentTemplate === '1.4.2') {
-            pdfContent = createPDFContent142(data);
-            templateName = 'yazili_ifade_tutanagi_ogrenci';
-        } else if (state.currentTemplate === '1.5') {
-            pdfContent = createPDFContent15(data);
-            templateName = 'itham_ifade_tutanagi';
-        } else if (state.currentTemplate === '1.6.1') {
-            pdfContent = createPDFContent161(data);
-            templateName = 'on_inceleme_ifade_mudafisiz';
-        } else if (state.currentTemplate === '1.6.2') {
-            pdfContent = createPDFContent162(data);
-            templateName = 'on_inceleme_mudafi_istegi';
-
-        } else if (state.currentTemplate === '1.6.3') {
-            pdfContent = createPDFContent163(data);
-            templateName = 'on_inceleme_mudafi_atama_istegi';
-        } else if (state.currentTemplate === '1.6.4') {
-            pdfContent = createPDFContent164(data);
-            templateName = 'on_inceleme_baro_yazisi';
-        } else if (state.currentTemplate === '1.6.5') {
-            pdfContent = createPDFContent165(data);
-            templateName = 'on_inceleme_ifade_mudafili';
-        } else if (state.currentTemplate === '2.1') {
-            pdfContent = createPDFContent21(data);
-            templateName = 'cagri_kagidi_tanik';
-        } else if (state.currentTemplate === '2.3') {
-            pdfContent = createPDFContent23(data);
-            templateName = 'teblig_tebellug_tutanagi';
-        } else if (state.currentTemplate === '2.4') {
-            pdfContent = createPDFContent24(data);
-            templateName = 'zorla_getirme_yazisi';
-        } else if (state.currentTemplate === '3.1') {
-            pdfContent = createPDFContent31(data);
-            templateName = 'ihbar_sikayet_tespit';
-        } else if (state.currentTemplate === '4.1') {
-            pdfContent = createPDFContent41(data);
-            templateName = 'bilgi_belge_isteme';
-        } else if (state.currentTemplate === '4.2') {
-            pdfContent = createPDFContent42(data);
-            templateName = 'bilgi_belge_isteme_varyant2';
-        } else if (state.currentTemplate === '4.3') {
-            pdfContent = createPDFContent43(data);
-            templateName = 'dosya_bilgi_belge_isteme';
-        } else if (state.currentTemplate === '4.4') {
-            pdfContent = createPDFContent44(data);
-            templateName = 'bassavcilik_bilgi_belge_isteme';
-        } else if (state.currentTemplate === '5.1') {
-            pdfContent = createPDFContent51(data);
-            templateName = 'bilirkisi_gorevlendirme';
-        } else if (state.currentTemplate === '5.2') {
-            pdfContent = createPDFContent52(data);
-            templateName = 'bilirkisi_gorevlendirme_yazisi';
-        } else if (state.currentTemplate === '5.3') {
-            pdfContent = createPDFContent53(data);
-            templateName = 'bilirkisi_ucret_odeme';
-        } else if (state.currentTemplate === '6.1') {
-            pdfContent = createPDFContent61(data);
-            templateName = 'gorevden_uzaklastirma_oluru';
-        } else if (state.currentTemplate === '6.2') {
-            pdfContent = createPDFContent62(data);
-            templateName = 'gorevden_uzaklastirma_kaldirma_oluru';
-        } else if (state.currentTemplate === '6.3') {
-            pdfContent = createPDFContent63(data);
-            templateName = 'gorevden_uzaklastirma_tedbiri';
-        } else if (state.currentTemplate === '6.4') {
-            pdfContent = createPDFContent64(data);
-            templateName = 'gorevden_uzaklastirma_kaldirma_teklifi';
-        } else if (state.currentTemplate === '6.5') {
-            pdfContent = createPDFContent65(data);
-            templateName = 'gorevden_uzaklastirma_kaldirma_oluru';
-        } else if (state.currentTemplate === '6.6') {
-            pdfContent = createPDFContent66(data);
-            templateName = 'gorevden_uzaklastirma_bildirimi';
-        } else if (state.currentTemplate === '6.7') {
-            pdfContent = createPDFContent67(data);
-            templateName = 'gorevden_uzaklastirma_mulki_amir';
-        } else if (state.currentTemplate === '6.8') {
-            pdfContent = createPDFContent68(data);
-            templateName = 'gorevden_uzaklastirma_kurum';
-        } else if (state.currentTemplate === '6.9') {
-            pdfContent = createPDFContent69(data);
-            templateName = 'gorevden_uzaklastirma_teblig';
-        } else if (state.currentTemplate === '7.1') {
-            pdfContent = createPDFContent71(data);
-            templateName = 'naip_tayin_tanik';
-        } else if (state.currentTemplate === '7.2') {
-            pdfContent = createPDFContent72(data);
-            templateName = 'istinabe_talimati_tanik';
-        } else if (state.currentTemplate === '7.3') {
-            pdfContent = createPDFContent73(data);
-            templateName = 'naip_tayin_itham';
-        } else if (state.currentTemplate === '7.4') {
-            pdfContent = createPDFContent74(data);
-            templateName = 'istinabe_talimati_itham';
-        } else if (state.currentTemplate === '8.1') {
-            pdfContent = createPDFContent81(data);
-            templateName = 'yetkilendirme_karari';
-        } else if (state.currentTemplate === '8.2') {
-            pdfContent = createPDFContent82(data);
-            templateName = 'ifade_alma_esaslari';
-        } else if (state.currentTemplate === '9.1') {
-            pdfContent = createPDFContent91(data);
-            templateName = 'elkoyma_tutanagi';
-        } else if (state.currentTemplate === '10.1') {
-            pdfContent = createPDFContent101(data);
-            templateName = 'imza_yazi_tespiti';
-        } else if (state.currentTemplate === '10.2') {
-            pdfContent = createPDFContent102(data);
-            templateName = 'imza_yazi_tespit_tutanagi';
-        } else if (state.currentTemplate === '10.2.1') {
-            pdfContent = createPDFContent1021(data);
-            templateName = 'imza_yazi_ornegi_formu';
-        } else if (state.currentTemplate === '11.1') {
-            pdfContent = createPDFContent111(data);
-            templateName = 'on_rapor_kapagi';
-        } else if (state.currentTemplate === '11.2') {
-            pdfContent = createPDFContent112(data);
-            templateName = 'on_rapor';
-        } else if (state.currentTemplate === '12.1') {
-            pdfContent = createPDFContent121(data);
-            templateName = 'olur_istek_denetim';
-        } else if (state.currentTemplate === '12.2') {
-            pdfContent = createPDFContent122(data);
-            templateName = 'olur_istek_inceleme';
-        } else if (state.currentTemplate === '13.1') {
-            pdfContent = createPDFContent131(data);
-            templateName = 'inceleme_sorusturma_kapagi';
-        } else if (state.currentTemplate === '13.2') {
-            pdfContent = createPDFContent132(data);
-            templateName = 'inceleme_sorusturma_raporu';
-        } else if (state.currentTemplate === '14.1') {
-            pdfContent = createPDFContent1401(data);
-            templateName = 'on_inceleme_raporu_kapagi';
-        } else if (state.currentTemplate === '14.2') {
-            pdfContent = createPDFContent1402(data);
-            templateName = 'on_inceleme_raporu';
-        } else if (state.currentTemplate === '15.1') {
-            pdfContent = createPDFContent151(data);
-            templateName = 'suc_duyurusu_kapagi';
-        } else if (state.currentTemplate === '15.2') {
-            pdfContent = createPDFContent152(data);
-            templateName = 'suc_duyurusu_raporu';
-        } else if (state.currentTemplate === '15.3') {
-            pdfContent = createPDFContent153(data);
-            templateName = 'diger_bakanlik_suc_duyurusu_kapagi';
-        } else if (state.currentTemplate === '15.4') {
-            pdfContent = createPDFContent154(data);
-            templateName = 'diger_bakanlik_suc_duyurusu_raporu';
-        } else if (state.currentTemplate === '15.5') {
-            pdfContent = createPDFContent155(data);
-            templateName = 'tevdi_raporu_kapagi';
-        }
+        const pdfTemplate = PDF_TEMPLATES[state.currentTemplate];
+        const pdfContent = pdfTemplate && pdfTemplate.build(escapeFormData(data));
+        const templateName = pdfTemplate && pdfTemplate.name;
 
         if (!pdfContent) {
             throw new Error(`Şablon için PDF içeriği oluşturulamadı: ${state.currentTemplate}`);
@@ -5823,25 +5767,7 @@ async function generatePDF() {
         const filename = `${templateName}_${data.tarih || 'tarihsiz'}.pdf`;
         if (window.showToast) showToast('PDF oluşturuluyor...', 'info');
 
-        // Önce sunucuda Chrome yazdırma motoruyla üret; ulaşılamazsa
-        // tarayıcı içi html2pdf yöntemine geri düş.
-        const serverOk = await generatePDFOnServer(pdfContent, filename);
-
-        if (!serverOk) {
-            // Sayfa sınırında satırların ortadan kesilmesini önle
-            optimizePdfPageBreaks(pdfContent);
-
-            const opt = {
-                margin: [15, 15, 15, 15],
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] }
-            };
-
-            await html2pdf().set(opt).from(pdfContent).save();
-        }
+        await downloadPDF(pdfContent, filename);
 
     } catch (error) {
         console.error('PDF generation error:', error);

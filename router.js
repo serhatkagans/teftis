@@ -980,12 +980,12 @@ async function renderDocumentDetailPage(documentId) {
         <div class="document-detail-page">
             <div class="document-header">
                 <div class="document-info">
-                    <span class="document-code">${doc.template_code}</span>
-                    <h1>${doc.template_name}</h1>
+                    <span class="document-code">${escapeHtml(doc.template_code)}</span>
+                    <h1>${escapeHtml(doc.template_name)}</h1>
                     <div class="document-meta">
                         <span class="meta-item">
                             <span class="meta-icon">📁</span>
-                            ${doc.category}
+                            ${escapeHtml(doc.category)}
                         </span>
                         <span class="meta-item">
                             <span class="meta-icon">📅</span>
@@ -994,7 +994,7 @@ async function renderDocumentDetailPage(documentId) {
                         ${doc.person_name ? `
                             <span class="meta-item">
                                 <span class="meta-icon">👤</span>
-                                ${doc.person_name}
+                                ${escapeHtml(doc.person_name)}
                             </span>
                         ` : ''}
                     </div>
@@ -1022,7 +1022,7 @@ async function renderDocumentDetailPage(documentId) {
             <div class="document-data-section">
                 <h3>📊 Kayıtlı Veriler</h3>
                 <div class="data-grid">
-                    ${renderFormDataTable(doc.form_data)}
+                    ${renderFormDataTable(escapeFormData(doc.form_data))}
                 </div>
             </div>
         </div>
@@ -1038,63 +1038,64 @@ async function renderDocumentDetailPage(documentId) {
 
         // Helper to find the right render function
         // Note: Ideally this should be centralized but we'll map it here for now
-        if (doc.template_code === '1.1') html = renderTemplate11(doc.form_data);
-        else if (doc.template_code === '1.2') html = renderTemplate12(doc.form_data, false);
-        else if (doc.template_code === '1.3') html = renderTemplate12(doc.form_data, true);
-        else if (doc.template_code === '1.4.1') html = renderTemplate141(doc.form_data);
-        else if (doc.template_code === '1.4.2') html = renderTemplate142(doc.form_data);
-        else if (doc.template_code === '1.5') html = renderTemplate15(doc.form_data);
-        else if (doc.template_code === '1.6.1') html = renderTemplate161(doc.form_data);
-        else if (doc.template_code === '1.6.2') html = renderTemplate162(doc.form_data);
-        else if (doc.template_code === '1.6.3') html = renderTemplate163(doc.form_data);
-        else if (doc.template_code === '1.6.4') html = renderTemplate164(doc.form_data);
-        else if (doc.template_code === '1.6.5') html = renderTemplate165(doc.form_data);
-        else if (doc.template_code === '2.1') html = renderTemplate21(doc.form_data);
-        else if (doc.template_code === '2.3') html = renderTemplate23(doc.form_data);
-        else if (doc.template_code === '2.4') html = renderTemplate24(doc.form_data);
-        else if (doc.template_code === '3.1') html = renderTemplate31(doc.form_data);
-        else if (doc.template_code === '4.1') html = renderTemplate41(doc.form_data);
-        else if (doc.template_code === '4.2') html = renderTemplate42(doc.form_data);
-        else if (doc.template_code === '4.3') html = renderTemplate43(doc.form_data);
-        else if (doc.template_code === '4.4') html = renderTemplate44(doc.form_data);
-        else if (doc.template_code === '5.1') html = renderTemplate51(doc.form_data);
-        else if (doc.template_code === '5.2') html = renderTemplate52(doc.form_data);
-        else if (doc.template_code === '5.3') html = renderTemplate53(doc.form_data);
-        else if (doc.template_code === '6.1') html = renderTemplate61(doc.form_data);
-        else if (doc.template_code === '6.2') html = renderTemplate62(doc.form_data);
-        else if (doc.template_code === '6.3') html = renderTemplate63(doc.form_data);
-        else if (doc.template_code === '6.4') html = renderTemplate64(doc.form_data);
-        else if (doc.template_code === '6.5') html = renderTemplate65(doc.form_data);
-        else if (doc.template_code === '6.6') html = renderTemplate66(doc.form_data);
-        else if (doc.template_code === '6.7') html = renderTemplate67(doc.form_data);
-        else if (doc.template_code === '6.8') html = renderTemplate68(doc.form_data);
-        else if (doc.template_code === '6.9') html = renderTemplate69(doc.form_data);
-        else if (doc.template_code === '7.1') html = renderTemplate71(doc.form_data);
-        else if (doc.template_code === '7.2') html = renderTemplate72(doc.form_data);
-        else if (doc.template_code === '7.3') html = renderTemplate73(doc.form_data);
-        else if (doc.template_code === '7.4') html = renderTemplate74(doc.form_data);
-        else if (doc.template_code === '8.1') html = renderTemplate81(doc.form_data);
-        else if (doc.template_code === '8.2') html = renderTemplate82(doc.form_data);
-        else if (doc.template_code === '9.1') html = renderTemplate91(doc.form_data);
-        else if (doc.template_code === '10.1') html = renderTemplate101(doc.form_data);
-        else if (doc.template_code === '10.2') html = renderTemplate102(doc.form_data);
-        else if (doc.template_code === '10.2.1') html = renderTemplate1021(doc.form_data);
-        else if (doc.template_code === '11.1') html = renderTemplate111(doc.form_data);
-        else if (doc.template_code === '11.2') html = renderTemplate112(doc.form_data);
-        else if (doc.template_code === '12.1') html = renderTemplate121(doc.form_data);
-        else if (doc.template_code === '12.2') html = renderTemplate122(doc.form_data);
-        else if (doc.template_code === '13.1') html = renderTemplate131(doc.form_data);
-        else if (doc.template_code === '13.2') html = renderTemplate132(doc.form_data);
-        else if (doc.template_code === '14.1') html = renderTemplate1401(doc.form_data);
-        else if (doc.template_code === '14.2') html = renderTemplate1402(doc.form_data);
-        else if (doc.template_code === '15.1') html = renderTemplate151(doc.form_data);
-        else if (doc.template_code === '15.2') html = renderTemplate152(doc.form_data);
-        else if (doc.template_code === '15.3') html = renderTemplate153(doc.form_data);
-        else if (doc.template_code === '15.4') html = renderTemplate154(doc.form_data);
-        else if (doc.template_code === '15.5') html = renderTemplate155(doc.form_data);
-        else if (doc.template_code === '15.6') html = renderTemplate156(doc.form_data);
-        else if (doc.template_code === '16.1') html = renderTemplate161_dizi(doc.form_data);
-        else html = `<div class="empty-field">Bu şablon (${doc.template_code}) için önizleme görüntülenemiyor.</div>`;
+        const viewData = escapeFormData(doc.form_data);
+        if (doc.template_code === '1.1') html = renderTemplate11(viewData);
+        else if (doc.template_code === '1.2') html = renderTemplate12(viewData, false);
+        else if (doc.template_code === '1.3') html = renderTemplate12(viewData, true);
+        else if (doc.template_code === '1.4.1') html = renderTemplate141(viewData);
+        else if (doc.template_code === '1.4.2') html = renderTemplate142(viewData);
+        else if (doc.template_code === '1.5') html = renderTemplate15(viewData);
+        else if (doc.template_code === '1.6.1') html = renderTemplate161(viewData);
+        else if (doc.template_code === '1.6.2') html = renderTemplate162(viewData);
+        else if (doc.template_code === '1.6.3') html = renderTemplate163(viewData);
+        else if (doc.template_code === '1.6.4') html = renderTemplate164(viewData);
+        else if (doc.template_code === '1.6.5') html = renderTemplate165(viewData);
+        else if (doc.template_code === '2.1') html = renderTemplate21(viewData);
+        else if (doc.template_code === '2.3') html = renderTemplate23(viewData);
+        else if (doc.template_code === '2.4') html = renderTemplate24(viewData);
+        else if (doc.template_code === '3.1') html = renderTemplate31(viewData);
+        else if (doc.template_code === '4.1') html = renderTemplate41(viewData);
+        else if (doc.template_code === '4.2') html = renderTemplate42(viewData);
+        else if (doc.template_code === '4.3') html = renderTemplate43(viewData);
+        else if (doc.template_code === '4.4') html = renderTemplate44(viewData);
+        else if (doc.template_code === '5.1') html = renderTemplate51(viewData);
+        else if (doc.template_code === '5.2') html = renderTemplate52(viewData);
+        else if (doc.template_code === '5.3') html = renderTemplate53(viewData);
+        else if (doc.template_code === '6.1') html = renderTemplate61(viewData);
+        else if (doc.template_code === '6.2') html = renderTemplate62(viewData);
+        else if (doc.template_code === '6.3') html = renderTemplate63(viewData);
+        else if (doc.template_code === '6.4') html = renderTemplate64(viewData);
+        else if (doc.template_code === '6.5') html = renderTemplate65(viewData);
+        else if (doc.template_code === '6.6') html = renderTemplate66(viewData);
+        else if (doc.template_code === '6.7') html = renderTemplate67(viewData);
+        else if (doc.template_code === '6.8') html = renderTemplate68(viewData);
+        else if (doc.template_code === '6.9') html = renderTemplate69(viewData);
+        else if (doc.template_code === '7.1') html = renderTemplate71(viewData);
+        else if (doc.template_code === '7.2') html = renderTemplate72(viewData);
+        else if (doc.template_code === '7.3') html = renderTemplate73(viewData);
+        else if (doc.template_code === '7.4') html = renderTemplate74(viewData);
+        else if (doc.template_code === '8.1') html = renderTemplate81(viewData);
+        else if (doc.template_code === '8.2') html = renderTemplate82(viewData);
+        else if (doc.template_code === '9.1') html = renderTemplate91(viewData);
+        else if (doc.template_code === '10.1') html = renderTemplate101(viewData);
+        else if (doc.template_code === '10.2') html = renderTemplate102(viewData);
+        else if (doc.template_code === '10.2.1') html = renderTemplate1021(viewData);
+        else if (doc.template_code === '11.1') html = renderTemplate111(viewData);
+        else if (doc.template_code === '11.2') html = renderTemplate112(viewData);
+        else if (doc.template_code === '12.1') html = renderTemplate121(viewData);
+        else if (doc.template_code === '12.2') html = renderTemplate122(viewData);
+        else if (doc.template_code === '13.1') html = renderTemplate131(viewData);
+        else if (doc.template_code === '13.2') html = renderTemplate132(viewData);
+        else if (doc.template_code === '14.1') html = renderTemplate1401(viewData);
+        else if (doc.template_code === '14.2') html = renderTemplate1402(viewData);
+        else if (doc.template_code === '15.1') html = renderTemplate151(viewData);
+        else if (doc.template_code === '15.2') html = renderTemplate152(viewData);
+        else if (doc.template_code === '15.3') html = renderTemplate153(viewData);
+        else if (doc.template_code === '15.4') html = renderTemplate154(viewData);
+        else if (doc.template_code === '15.5') html = renderTemplate155(viewData);
+        else if (doc.template_code === '15.6') html = renderTemplate156(viewData);
+        else if (doc.template_code === '16.1') html = renderTemplate161_dizi(viewData);
+        else html = `<div class="empty-field">Bu şablon (${escapeHtml(doc.template_code)}) için önizleme görüntülenemiyor.</div>`;
 
         // Wrap in preview-content to match the live preview styling (A4 size, word-wrap, etc.)
         previewContainer.innerHTML = '<div class="preview-content"></div>';
@@ -1237,151 +1238,20 @@ async function generatePDFFromData(formData, templateCode, templateName) {
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
     try {
-        console.log('🔍 generatePDFFromData called with:', { templateCode, templateName });
-        console.log('📦 Raw formData:', formData);
+        // Tarihleri biçimlendir, ardından HTML'e yazılacak değerleri kaçışla
+        const data = escapeFormData(formatFormDataDates({ ...formData }));
 
-        // Format dates before generating PDF
-        const data = formatFormDataDates({ ...formData });
-
-        console.log('📅 Formatted data:', data);
-
-        let pdfContent;
-
-        if (templateCode === '1.1') {
-            pdfContent = createPDFContent11(data);
-        } else if (templateCode === '1.2') {
-            pdfContent = createPDFContent12(data, false);
-        } else if (templateCode === '1.3') {
-            pdfContent = createPDFContent12(data, true);
-        } else if (templateCode === '1.4.1') {
-            pdfContent = createPDFContent141(data);
-        } else if (templateCode === '1.4.2') {
-            pdfContent = createPDFContent142(data);
-        } else if (templateCode === '1.5') {
-            pdfContent = createPDFContent15(data);
-        } else if (templateCode === '1.6.1') {
-            pdfContent = createPDFContent161(data);
-        } else if (templateCode === '1.6.2') {
-            pdfContent = createPDFContent162(data);
-        } else if (templateCode === '1.6.3') {
-            pdfContent = createPDFContent163(data);
-        } else if (templateCode === '1.6.4') {
-            pdfContent = createPDFContent164(data);
-        } else if (templateCode === '1.6.5') {
-            pdfContent = createPDFContent165(data);
-        } else if (templateCode === '2.1') {
-            pdfContent = createPDFContent21(data);
-        } else if (templateCode === '2.2') {
-            pdfContent = createPDFContent22(data);
-        } else if (templateCode === '2.3') {
-            pdfContent = createPDFContent23(data);
-        } else if (templateCode === '2.4') {
-            pdfContent = createPDFContent24(data);
-        } else if (templateCode === '3.1') {
-            pdfContent = createPDFContent31(data);
-        } else if (templateCode === '4.1') {
-            pdfContent = createPDFContent41(data);
-        } else if (templateCode === '4.2') {
-            pdfContent = createPDFContent42(data);
-        } else if (templateCode === '4.3') {
-            pdfContent = createPDFContent43(data);
-        } else if (templateCode === '4.4') {
-            pdfContent = createPDFContent44(data);
-        } else if (templateCode === '5.1') {
-            pdfContent = createPDFContent51(data);
-        } else if (templateCode === '5.2') {
-            pdfContent = createPDFContent52(data);
-        } else if (templateCode === '5.3') {
-            pdfContent = createPDFContent53(data);
-        } else if (templateCode === '6.1') {
-            pdfContent = createPDFContent61(data);
-        } else if (templateCode === '6.2') {
-            pdfContent = createPDFContent62(data);
-        } else if (templateCode === '6.3') {
-            pdfContent = createPDFContent63(data);
-        } else if (templateCode === '6.4') {
-            pdfContent = createPDFContent64(data);
-        } else if (templateCode === '6.5') {
-            pdfContent = createPDFContent65(data);
-        } else if (templateCode === '6.6') {
-            pdfContent = createPDFContent66(data);
-        } else if (templateCode === '6.7') {
-            pdfContent = createPDFContent67(data);
-        } else if (templateCode === '6.8') {
-            pdfContent = createPDFContent68(data);
-        } else if (templateCode === '6.9') {
-            pdfContent = createPDFContent69(data);
-        } else if (templateCode === '7.1') {
-            pdfContent = createPDFContent71(data);
-        } else if (templateCode === '7.2') {
-            pdfContent = createPDFContent72(data);
-        } else if (templateCode === '7.3') {
-            pdfContent = createPDFContent73(data);
-        } else if (templateCode === '7.4') {
-            pdfContent = createPDFContent74(data);
-        } else if (templateCode === '8.1') {
-            pdfContent = createPDFContent81(data);
-        } else if (templateCode === '8.2') {
-            pdfContent = createPDFContent82(data);
-        } else if (templateCode === '9.1') {
-            pdfContent = createPDFContent91(data);
-        } else if (templateCode === '10.1') {
-            pdfContent = createPDFContent101(data);
-        } else if (templateCode === '10.2') {
-            pdfContent = createPDFContent102(data);
-        } else if (templateCode === '10.2.1') {
-            pdfContent = createPDFContent1021(data);
-        } else if (templateCode === '11.1') {
-            pdfContent = createPDFContent111(data);
-        } else if (templateCode === '11.2') {
-            pdfContent = createPDFContent112(data);
-        } else if (templateCode === '12.1') {
-            pdfContent = createPDFContent121(data);
-        } else if (templateCode === '12.2') {
-            pdfContent = createPDFContent122(data);
-        } else if (templateCode === '13.1') {
-            pdfContent = createPDFContent131(data);
-        } else if (templateCode === '13.2') {
-            pdfContent = createPDFContent132(data);
-        } else if (templateCode === '14.1') {
-            pdfContent = createPDFContent1401(data);
-        } else if (templateCode === '14.2') {
-            pdfContent = createPDFContent1402(data);
-        } else if (templateCode === '15.1') {
-            pdfContent = createPDFContent151(data);
-        } else if (templateCode === '15.2') {
-            pdfContent = createPDFContent152(data);
-        } else if (templateCode === '15.3') {
-            pdfContent = createPDFContent153(data);
-        } else if (templateCode === '15.4') {
-            pdfContent = createPDFContent154(data);
-        } else if (templateCode === '15.5') {
-            pdfContent = createPDFContent155(data);
-        } else if (templateCode === '15.6') {
-            pdfContent = createPDFContent156(data);
-        } else if (templateCode === '16.1') {
-            pdfContent = createPDFContent161_dizi(data);
-        }
-
+        const pdfTemplate = PDF_TEMPLATES[templateCode];
+        const pdfContent = pdfTemplate && pdfTemplate.build(data);
         if (!pdfContent) {
             throw new Error('PDF içeriği oluşturulamadı');
         }
 
-        const opt = {
-            margin: [15, 15, 15, 15],
-            filename: `${templateCode}_${templateName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        console.log('🚀 Starting html2pdf conversion...');
-        await html2pdf().set(opt).from(pdfContent).save();
-        console.log('✅ PDF saved successfully!');
+        const filename = `${pdfTemplate.name}_${formData.tarih || 'tarihsiz'}.pdf`;
+        await downloadPDF(pdfContent, filename);
         showToast('PDF oluşturuldu', 'success');
     } catch (error) {
-        console.error('❌ PDF Error:', error);
-        console.error('❌ Error stack:', error.stack);
+        console.error('PDF Error:', error);
         showToast('PDF oluşturulurken hata: ' + error.message, 'error');
     } finally {
         if (loadingOverlay) loadingOverlay.classList.add('hidden');
@@ -1469,12 +1339,12 @@ async function renderDocumentsListPage() {
                                         <tbody>
                                             ${docs.map(doc => `
                                                 <tr onclick="navigateTo('documents/${doc.id}')">
-                                                    <td><span class="doc-code">${doc.template_code}</span></td>
+                                                    <td><span class="doc-code">${escapeHtml(doc.template_code)}</span></td>
                                                     <td>
-                                                        <div>${doc.template_name}</div>
+                                                        <div>${escapeHtml(doc.template_name)}</div>
                                                         ${(() => {
                         const name = doc.person_name || (doc.form_data ? DataService._extractPersonName(doc.form_data) : null);
-                        return name ? `<div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">👤 ${name}</div>` : '';
+                        return name ? `<div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">👤 ${escapeHtml(name)}</div>` : '';
                     })()}
                                                     </td>
                                                     <td>${formatRelativeDate(doc.created_at)}</td>
