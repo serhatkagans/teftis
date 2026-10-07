@@ -19,6 +19,9 @@ Tarayıcıda: http://localhost:4000
 
 Windows PowerShell'de: `$env:PORT=4000; npm start`
 
+Windows'ta kısaca: **`baslat.bat`** sunucuyu arka planda başlatıp tarayıcıda açar (çıktılar `server/sunucu.log`),
+**`durdur.bat`** durdurur.
+
 Veritabanı (`server/teftis.db`) ilk çalıştırmada otomatik oluşturulur.
 
 ## Testler
