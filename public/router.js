@@ -250,7 +250,7 @@ window.handleExtendSession = async function () {
     const result = await AuthService.extendSession();
 
     if (result.success) {
-        showToast('Oturum süresi uzatıldı! ✅');
+        showToast(result.message || 'Oturum süresi uzatıldı');
         // Timer will auto-update on next tick
     } else {
         showToast('Hata: ' + result.error, 'error');
@@ -276,10 +276,11 @@ function updateBreadcrumb() {
     }
 
     container.style.display = 'block';
-    let html = '<a href="#" onclick="navigateTo(\'\'); return false;">🏠 Ana Sayfa</a>';
+    let html = '<a href="#/">🏠 Ana Sayfa</a>';
 
     if (currentRoute.category) {
-        html += ` <span class="separator">›</span> <a href="#/category/${encodeURIComponent(currentRoute.category)}" onclick="navigateTo('category/${encodeURIComponent(currentRoute.category)}'); return false;">${currentRoute.category}</a>`;
+        // Kategori adresten (#/category/...) gelebilir: metin kaçışlanır, bağlantı yalnızca href ile çalışır
+        html += ` <span class="separator">›</span> <a href="#/category/${encodeURIComponent(currentRoute.category)}">${escapeHtml(currentRoute.category)}</a>`;
     }
 
     if (currentRoute.view === 'template' && currentRoute.templateCode) {
@@ -335,7 +336,7 @@ async function renderHomePage() {
                         ${lastName ? ` • Son: <strong>${escapeHtml(lastName)}</strong>` : ''}
                     </span>
                 </div>
-                <a href="#/documents" onclick="navigateTo('documents'); return false;" class="notification-link">
+                <a href="#/documents" class="notification-link">
                     Belgelerime Git →
                 </a>
             </div>
@@ -351,18 +352,18 @@ async function renderHomePage() {
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
                     <input type="text" id="searchInput" placeholder="Şablon ara (kod veya isim)..." 
-                           oninput="handleSearch(this.value)">
-                    <button class="clear-search" id="clearSearch" onclick="clearSearch()" style="display: none;">✕</button>
+                           ${uiAction('input', 'handleSearch', '$value')}>
+                    <button class="clear-search" id="clearSearch" ${uiAction('click', 'clearSearch')} style="display: none;">✕</button>
                 </div>
                 <div class="filter-box">
                     <label for="categoryFilter">Kategori:</label>
-                    <select id="categoryFilter" onchange="handleCategoryFilter(this.value)">
+                    <select id="categoryFilter" ${uiAction('change', 'handleCategoryFilter', '$value')}>
                         <option value="all">Tüm Kategoriler</option>
                         ${getCategories().map(cat => `<option value="${cat}">${cat}</option>`).join('')}
                     </select>
                 </div>
                 <div class="view-toggle">
-                    <button class="view-btn ${viewMode === 'card' ? 'active' : ''}" onclick="setViewMode('card')" title="Kart Görünümü">
+                    <button class="view-btn ${viewMode === 'card' ? 'active' : ''}" ${uiAction('click', 'setViewMode', 'card', '$el')} title="Kart Görünümü">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7" rx="1"/>
                             <rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -370,7 +371,7 @@ async function renderHomePage() {
                             <rect x="14" y="14" width="7" height="7" rx="1"/>
                         </svg>
                     </button>
-                    <button class="view-btn ${viewMode === 'list' ? 'active' : ''}" onclick="setViewMode('list')" title="Liste Görünümü">
+                    <button class="view-btn ${viewMode === 'list' ? 'active' : ''}" ${uiAction('click', 'setViewMode', 'list', '$el')} title="Liste Görünümü">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="8" y1="6" x2="21" y2="6"/>
                             <line x1="8" y1="12" x2="21" y2="12"/>
@@ -426,13 +427,13 @@ function formatRelativeDate(dateString) {
     return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function setViewMode(mode) {
+function setViewMode(mode, button) {
     viewMode = mode;
     localStorage.setItem('viewMode', mode);
 
     // Update toggle buttons
     document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    button.classList.add('active');
 
     // Update template list class
     const templateList = document.getElementById('templateList');
@@ -471,7 +472,7 @@ function renderTemplateGroups(templates) {
 
         html += `
             <div class="category-group collapsed">
-                <div class="category-header" onclick="toggleCategory(this)">
+                <div class="category-header" ${uiAction('click', 'toggleCategory', '$el')}>
                     <span class="category-icon">${icon}</span>
                     <h2 class="category-title">${i + 1} ${category}</h2>
                     <span class="category-count">${categoryTemplates.length}</span>
@@ -493,7 +494,7 @@ function renderTemplateItem(template) {
     const statusText = template.implemented ? 'Hazır' : 'Yakında';
 
     return `
-        <div class="template-item ${statusClass}" onclick="navigateTo('templates/${template.code}')">
+        <div class="template-item ${statusClass}" ${uiAction('click', 'navigateTo', 'templates/' + template.code)}>
             <div class="template-code">${template.code}</div>
             <div class="template-name">${template.name}</div>
             <div class="template-status" title="${statusText}">
@@ -510,7 +511,7 @@ function renderTemplateCard(template) {
     const typeInfo = getTemplateType(template.type || 'diger');
 
     return `
-        <div class="template-card ${statusClass}" onclick="navigateTo('templates/${template.code}')">
+        <div class="template-card ${statusClass}" ${uiAction('click', 'navigateTo', 'templates/' + template.code)}>
             <div class="card-thumbnail" style="--type-color: ${typeInfo.color}">
                 <div class="thumbnail-icon">
                     ${typeInfo.icon}
@@ -551,10 +552,10 @@ function renderTemplatePage(template) {
                         Bu şablon henüz eklenmedi. Kısa sürede kullanıma sunulacaktır.
                     </p>
                     <div class="placeholder-actions">
-                        <button class="btn btn-secondary" onclick="history.back()">
+                        <button class="btn btn-secondary" ${uiAction('click', 'goBack')}>
                             <span>←</span> Geri Dön
                         </button>
-                        <button class="btn btn-primary" onclick="navigateTo('')">
+                        <button class="btn btn-primary" ${uiAction('click', 'navigateTo', '')}>
                             <span>🏠</span> Ana Sayfa
                         </button>
                     </div>
@@ -634,14 +635,14 @@ function renderCategoryPage(category) {
         <div class="category-page">
             <div class="category-page-header">
                 <span class="category-page-icon">${icon}</span>
-                <h1>${category}</h1>
+                <h1>${escapeHtml(category)}</h1>
                 <p>${templates.length} şablon</p>
             </div>
             <div class="category-page-list">
                 ${templates.map(t => renderTemplateItem(t)).join('')}
             </div>
             <div class="category-page-actions">
-                <button class="btn btn-secondary" onclick="navigateTo('')">
+                <button class="btn btn-secondary" ${uiAction('click', 'navigateTo', '')}>
                     <span>←</span> Tüm Kategoriler
                 </button>
             </div>
@@ -661,7 +662,7 @@ function render404Page() {
                     Aradığınız şablon veya sayfa bulunamadı.
                 </p>
                 <div class="placeholder-actions">
-                    <button class="btn btn-primary" onclick="navigateTo('')">
+                    <button class="btn btn-primary" ${uiAction('click', 'navigateTo', '')}>
                         <span>🏠</span> Ana Sayfa'ya Dön
                     </button>
                 </div>
@@ -692,17 +693,17 @@ function renderLoginPage(showRegister = false) {
                 </div>
                 
                 <div class="login-tabs">
-                    <button class="login-tab ${!showRegister ? 'active' : ''}" onclick="switchAuthTab('login')">
+                    <button class="login-tab ${!showRegister ? 'active' : ''}" ${uiAction('click', 'switchAuthTab', 'login')}>
                         Giriş Yap
                     </button>
-                    <button class="login-tab ${showRegister ? 'active' : ''}" onclick="switchAuthTab('register')">
+                    <button class="login-tab ${showRegister ? 'active' : ''}" ${uiAction('click', 'switchAuthTab', 'register')}>
                         Kayıt Ol
                     </button>
                 </div>
                 
                 <div class="login-error" id="authError"></div>
                 
-                <form class="login-form" id="authForm" onsubmit="handleAuthSubmit(event)">
+                <form class="login-form" id="authForm" ${uiAction('submit', 'handleAuthSubmit', '$event')}>
                     <input type="hidden" id="authMode" value="${showRegister ? 'register' : 'login'}">
                     
                     <div class="form-group" id="nameGroup" style="${showRegister ? '' : 'display: none;'}">
@@ -969,7 +970,7 @@ async function renderDocumentDetailPage(documentId) {
                     <h1>Belge Bulunamadı</h1>
                     <p class="placeholder-message">Aradığınız belge bulunamadı veya silinmiş olabilir.</p>
                     <div class="placeholder-actions">
-                        <button class="btn btn-primary" onclick="navigateTo('')">
+                        <button class="btn btn-primary" ${uiAction('click', 'navigateTo', '')}>
                             <span>🏠</span> Ana Sayfa
                         </button>
                     </div>
@@ -1007,13 +1008,13 @@ async function renderDocumentDetailPage(documentId) {
                     </div>
                 </div>
                 <div class="document-actions">
-                    <button class="btn btn-secondary" onclick="navigateTo('documents/${documentId}/edit')">
+                    <button class="btn btn-secondary" ${uiAction('click', 'navigateTo', 'documents/' + doc.id + '/edit')}>
                         <span>✏️</span> Düzenle
                     </button>
-                    <button class="btn btn-primary" onclick="downloadDocumentPdf('${documentId}')">
+                    <button class="btn btn-primary" ${uiAction('click', 'downloadDocumentPdf', doc.id)}>
                         <span>📄</span> PDF İndir
                     </button>
-                    <button class="btn btn-danger" onclick="deleteDocument('${documentId}')">
+                    <button class="btn btn-danger" ${uiAction('click', 'deleteDocument', doc.id)}>
                         <span>🗑️</span> Sil
                     </button>
                 </div>
@@ -1048,68 +1049,8 @@ async function renderDocumentDetailPage(documentId) {
         elements.previewContent = previewContainer;
         state.currentTemplate = doc.template_code;
 
-        let html = '';
-
-        // Helper to find the right render function
-        // Note: Ideally this should be centralized but we'll map it here for now
-        const viewData = escapeFormData(doc.form_data);
-        if (doc.template_code === '1.1') html = renderTemplate11(viewData);
-        else if (doc.template_code === '1.2') html = renderTemplate12(viewData, false);
-        else if (doc.template_code === '1.3') html = renderTemplate12(viewData, true);
-        else if (doc.template_code === '1.4.1') html = renderTemplate141(viewData);
-        else if (doc.template_code === '1.4.2') html = renderTemplate142(viewData);
-        else if (doc.template_code === '1.5') html = renderTemplate15(viewData);
-        else if (doc.template_code === '1.6.1') html = renderTemplate161(viewData);
-        else if (doc.template_code === '1.6.2') html = renderTemplate162(viewData);
-        else if (doc.template_code === '1.6.3') html = renderTemplate163(viewData);
-        else if (doc.template_code === '1.6.4') html = renderTemplate164(viewData);
-        else if (doc.template_code === '1.6.5') html = renderTemplate165(viewData);
-        else if (doc.template_code === '2.1') html = renderTemplate21(viewData);
-        else if (doc.template_code === '2.3') html = renderTemplate23(viewData);
-        else if (doc.template_code === '2.4') html = renderTemplate24(viewData);
-        else if (doc.template_code === '3.1') html = renderTemplate31(viewData);
-        else if (doc.template_code === '4.1') html = renderTemplate41(viewData);
-        else if (doc.template_code === '4.2') html = renderTemplate42(viewData);
-        else if (doc.template_code === '4.3') html = renderTemplate43(viewData);
-        else if (doc.template_code === '4.4') html = renderTemplate44(viewData);
-        else if (doc.template_code === '5.1') html = renderTemplate51(viewData);
-        else if (doc.template_code === '5.2') html = renderTemplate52(viewData);
-        else if (doc.template_code === '5.3') html = renderTemplate53(viewData);
-        else if (doc.template_code === '6.1') html = renderTemplate61(viewData);
-        else if (doc.template_code === '6.2') html = renderTemplate62(viewData);
-        else if (doc.template_code === '6.3') html = renderTemplate63(viewData);
-        else if (doc.template_code === '6.4') html = renderTemplate64(viewData);
-        else if (doc.template_code === '6.5') html = renderTemplate65(viewData);
-        else if (doc.template_code === '6.6') html = renderTemplate66(viewData);
-        else if (doc.template_code === '6.7') html = renderTemplate67(viewData);
-        else if (doc.template_code === '6.8') html = renderTemplate68(viewData);
-        else if (doc.template_code === '6.9') html = renderTemplate69(viewData);
-        else if (doc.template_code === '7.1') html = renderTemplate71(viewData);
-        else if (doc.template_code === '7.2') html = renderTemplate72(viewData);
-        else if (doc.template_code === '7.3') html = renderTemplate73(viewData);
-        else if (doc.template_code === '7.4') html = renderTemplate74(viewData);
-        else if (doc.template_code === '8.1') html = renderTemplate81(viewData);
-        else if (doc.template_code === '8.2') html = renderTemplate82(viewData);
-        else if (doc.template_code === '9.1') html = renderTemplate91(viewData);
-        else if (doc.template_code === '10.1') html = renderTemplate101(viewData);
-        else if (doc.template_code === '10.2') html = renderTemplate102(viewData);
-        else if (doc.template_code === '10.2.1') html = renderTemplate1021(viewData);
-        else if (doc.template_code === '11.1') html = renderTemplate111(viewData);
-        else if (doc.template_code === '11.2') html = renderTemplate112(viewData);
-        else if (doc.template_code === '12.1') html = renderTemplate121(viewData);
-        else if (doc.template_code === '12.2') html = renderTemplate122(viewData);
-        else if (doc.template_code === '13.1') html = renderTemplate131(viewData);
-        else if (doc.template_code === '13.2') html = renderTemplate132(viewData);
-        else if (doc.template_code === '14.1') html = renderTemplate1401(viewData);
-        else if (doc.template_code === '14.2') html = renderTemplate1402(viewData);
-        else if (doc.template_code === '15.1') html = renderTemplate151(viewData);
-        else if (doc.template_code === '15.2') html = renderTemplate152(viewData);
-        else if (doc.template_code === '15.3') html = renderTemplate153(viewData);
-        else if (doc.template_code === '15.4') html = renderTemplate154(viewData);
-        else if (doc.template_code === '15.5') html = renderTemplate155(viewData);
-        else if (doc.template_code === '15.6') html = renderTemplate156(viewData);
-        else if (doc.template_code === '16.1') html = renderTemplate161_dizi(viewData);
-        else html = `<div class="empty-field">Bu şablon (${escapeHtml(doc.template_code)}) için önizleme görüntülenemiyor.</div>`;
+        const html = renderDocumentHtml(doc.template_code, doc.form_data)
+            || '<div class="empty-field">Bu şablon (' + escapeHtml(doc.template_code) + ') için önizleme görüntülenemiyor.</div>';
 
         // Wrap in preview-content to match the live preview styling (A4 size, word-wrap, etc.)
         previewContainer.innerHTML = '<div class="preview-content"></div>';
@@ -1182,7 +1123,7 @@ function renderFormDataTable(formData) {
             const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             html += `
                 <div class="data-item">
-                    <span class="data-label">${label}</span>
+                    <span class="data-label">${escapeHtml(label)}</span>
                     <span class="data-value">${value}</span>
                 </div>
             `;
@@ -1253,53 +1194,20 @@ async function downloadDocumentPdf(documentId) {
     state.currentTemplate = doc.template_code;
 
     // Generate PDF using existing function
-    await generatePDFFromData(doc.form_data, doc.template_code, doc.template_name);
+    await generatePDFFromData(doc.form_data, doc.template_code);
 }
 
-// Helper function to format dates in formData (same as collectFormData in app.js)
-function formatFormDataDates(data) {
-    // Format main tarih field
-    if (data.tarih) {
-        const date = new Date(data.tarih);
-        data.tarih_formatted = date.toLocaleDateString('tr-TR', {
-            day: '2-digit', month: '2-digit', year: 'numeric'
-        });
-    } else {
-        data.tarih_formatted = '';
-    }
-
-    // Format other common date fields
-    const dateFields = ['sikayetci_dogum_tarihi', 'tanik_dogum_tarihi', 'davet_tarihi', 'randevu_tarihi', 'ifade_tarihi'];
-    dateFields.forEach(field => {
-        if (data[field]) {
-            const date = new Date(data[field]);
-            data[field + '_formatted'] = date.toLocaleDateString('tr-TR', {
-                day: '2-digit', month: '2-digit', year: 'numeric'
-            });
-        } else {
-            data[field + '_formatted'] = '';
-        }
-    });
-
-    return data;
-}
-
-async function generatePDFFromData(formData, templateCode, templateName) {
+async function generatePDFFromData(formData, templateCode) {
     const loadingOverlay = document.getElementById('loadingOverlay');
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
     try {
-        // Tarihleri biçimlendir, ardından HTML'e yazılacak değerleri kaçışla
-        const data = escapeFormData(formatFormDataDates({ ...formData }));
-
-        const pdfTemplate = PDF_TEMPLATES[templateCode];
-        const pdfContent = pdfTemplate && pdfTemplate.build(data);
+        const pdfContent = buildDocumentElement(templateCode, formData);
         if (!pdfContent) {
             throw new Error('PDF içeriği oluşturulamadı');
         }
 
-        const filename = `${pdfTemplate.name}_${formData.tarih || 'tarihsiz'}.pdf`;
-        await downloadPDF(pdfContent, filename);
+        await downloadPDF(pdfContent, documentFileName(templateCode, formData));
         showToast('PDF oluşturuldu', 'success');
     } catch (error) {
         console.error('PDF Error:', error);
@@ -1332,11 +1240,11 @@ async function renderDocumentsListPage() {
                     <span class="search-icon">🔍</span>
                     <input type="text" id="documentsSearchInput" placeholder="Kişi adı, TC kimlik, şablon adı veya kodu..."
                            value="${escapeHtml(documentsListState.search)}"
-                           oninput="handleDocumentsSearch(this.value)">
+                           ${uiAction('input', 'handleDocumentsSearch', '$value')}>
                 </div>
                 <div class="filter-box">
                     <label for="documentsCategoryFilter">Kategori:</label>
-                    <select id="documentsCategoryFilter" onchange="handleDocumentsCategory(this.value)">
+                    <select id="documentsCategoryFilter" ${uiAction('change', 'handleDocumentsCategory', '$value')}>
                         <option value="">Tüm Kategoriler</option>
                         ${CATEGORY_ORDER.map(cat => `
                             <option value="${escapeHtml(cat)}" ${cat === documentsListState.category ? 'selected' : ''}>${escapeHtml(cat)}</option>
@@ -1401,7 +1309,7 @@ async function loadDocumentsPage() {
             <div class="empty-state">
                 <div class="empty-state-icon">⚠️</div>
                 <h3>Belgeler yüklenemedi</h3>
-                <button class="btn btn-secondary" onclick="loadDocumentsPage()" style="margin-top: 20px;">Tekrar Dene</button>
+                <button class="btn btn-secondary" ${uiAction('click', 'loadDocumentsPage')} style="margin-top: 20px;">Tekrar Dene</button>
             </div>
         `;
         return;
@@ -1424,7 +1332,7 @@ async function loadDocumentsPage() {
                 <h3>${filtered ? 'Aramanıza uyan belge bulunamadı' : 'Henüz kayıtlı belge yok'}</h3>
                 <p>${filtered ? 'Arama metnini veya kategoriyi değiştirmeyi deneyin.' : 'Şablon sayfalarından form doldurup kaydedebilirsiniz.'}</p>
                 ${filtered ? '' : `
-                    <button class="btn btn-primary" onclick="navigateTo('')" style="margin-top: 20px;">
+                    <button class="btn btn-primary" ${uiAction('click', 'navigateTo', '')} style="margin-top: 20px;">
                         <span>🏠</span> Ana Sayfa
                     </button>
                 `}
@@ -1452,7 +1360,7 @@ async function loadDocumentsPage() {
         const name = doc.person_name || (doc.form_data ? DataService._extractPersonName(doc.form_data) : null);
         const id = encodeURIComponent(doc.id);
         return `
-                    <tr onclick="navigateTo('documents/${id}')">
+                    <tr ${uiAction('click', 'navigateTo', 'documents/' + id)}>
                         <td><span class="doc-code">${escapeHtml(doc.template_code)}</span></td>
                         <td>
                             <div>${escapeHtml(doc.template_name)}</div>
@@ -1461,8 +1369,8 @@ async function loadDocumentsPage() {
                         <td>${escapeHtml(doc.category === 'İfadeler' ? 'İfade Tutanakları' : (doc.category || 'Diğer'))}</td>
                         <td>${formatRelativeDate(doc.created_at)}</td>
                         <td>
-                            <button class="btn btn-sm btn-secondary" title="Düzenle" onclick="event.stopPropagation(); navigateTo('documents/${id}/edit')">✏️</button>
-                            <button class="btn btn-sm btn-danger" title="Sil" onclick="event.stopPropagation(); deleteDocument('${id}')">🗑️</button>
+                            <button class="btn btn-sm btn-secondary" title="Düzenle" ${uiAction('click', 'navigateTo', 'documents/' + id + '/edit')}>✏️</button>
+                            <button class="btn btn-sm btn-danger" title="Sil" ${uiAction('click', 'deleteDocument', doc.id)}>🗑️</button>
                         </td>
                     </tr>
                 `;
@@ -1485,13 +1393,13 @@ function renderPaginationButtons(current, pages) {
     }
 
     const buttons = [];
-    buttons.push(`<button class="btn btn-sm btn-secondary" ${current === 1 ? 'disabled' : ''} onclick="goToDocumentsPage(${current - 1})">‹ Önceki</button>`);
+    buttons.push(`<button class="btn btn-sm btn-secondary" ${current === 1 ? 'disabled' : ''} ${uiAction('click', 'goToDocumentsPage', current - 1)}>‹ Önceki</button>`);
     numbers.forEach((p, i) => {
         if (i > 0 && p - numbers[i - 1] > 1) buttons.push('<span class="pagination-gap">…</span>');
         buttons.push(p === current
             ? `<button class="btn btn-sm btn-primary" aria-current="page" disabled>${p}</button>`
-            : `<button class="btn btn-sm btn-secondary" onclick="goToDocumentsPage(${p})">${p}</button>`);
+            : `<button class="btn btn-sm btn-secondary" ${uiAction('click', 'goToDocumentsPage', p)}>${p}</button>`);
     });
-    buttons.push(`<button class="btn btn-sm btn-secondary" ${current === pages ? 'disabled' : ''} onclick="goToDocumentsPage(${current + 1})">Sonraki ›</button>`);
+    buttons.push(`<button class="btn btn-sm btn-secondary" ${current === pages ? 'disabled' : ''} ${uiAction('click', 'goToDocumentsPage', current + 1)}>Sonraki ›</button>`);
     return buttons.join('');
 }

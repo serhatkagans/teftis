@@ -99,7 +99,7 @@ const AuthService = {
 
             // Yeni token'ı kaydet
             this._saveSession(data.token, data.user);
-            return { success: true };
+            return { success: true, message: data.message };
         } catch (error) {
             console.error('Extend error:', error);
             return { success: false, error: error.message };

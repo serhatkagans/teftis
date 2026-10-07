@@ -20,7 +20,10 @@ const { createLogger, serializeError } = require('./logger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = loadJwtSecret();
-const JWT_EXPIRES_IN = '40m';
+// Oturum süresi; "uzat" ile de bu süreden fazlasına çıkılamaz
+const SESSION_MAX_MS = 40 * 60 * 1000;
+const SESSION_EXTEND_MS = 10 * 60 * 1000;
+const JWT_EXPIRES_IN = SESSION_MAX_MS / 1000;
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'teftis.db');
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, 'backups');
@@ -93,6 +96,34 @@ app.use('/api', (req, res, next) => {
             ms: Date.now() - start
         });
     });
+    next();
+});
+
+// Güvenlik başlıkları. CSP satır içi betiği yasaklar (olaylar public/actions.js
+// ile bağlanır); satır içi stil, belge şablonlarında yaygın olduğu için serbesttir.
+const CONTENT_SECURITY_POLICY = [
+    "default-src 'self'",
+    "script-src 'self' https://cdnjs.cloudflare.com https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+].join('; ');
+
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    // HTTPS üzerinden gelindiyse tarayıcı bir yıl boyunca yalnızca HTTPS kullansın
+    if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     next();
 });
 
@@ -537,7 +568,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Extend session (Add 10 minutes to remaining time)
+// Oturumu uzat: kalan süreye 10 dakika eklenir, ancak toplam en fazla 40 dakika olur
 app.post('/api/auth/extend', authenticateToken, (req, res) => {
     try {
         const user = req.user;
@@ -547,8 +578,8 @@ app.post('/api/auth/extend', authenticateToken, (req, res) => {
         const now = Date.now();
         const remainingMs = Math.max(0, currentExp - now);
 
-        // Add 10 minutes (600000 ms) to remaining time
-        const newRemainingMs = remainingMs + (10 * 60 * 1000);
+        const newRemainingMs = Math.min(remainingMs + SESSION_EXTEND_MS, SESSION_MAX_MS);
+        const capped = newRemainingMs === SESSION_MAX_MS;
 
         // Generate new token with calculated expiration
         const token = jwt.sign(
@@ -559,7 +590,9 @@ app.post('/api/auth/extend', authenticateToken, (req, res) => {
 
         audit(req, 'auth.extend');
         res.json({
-            message: 'Oturum 10 dakika uzatıldı',
+            message: capped
+                ? 'Oturum süresi en fazla 40 dakika olabilir; süre 40 dakikaya ayarlandı'
+                : 'Oturum 10 dakika uzatıldı',
             token,
             user: { id: user.id, username: user.username, name: user.name, role: user.role }
         });

@@ -290,6 +290,36 @@ test('yalnızca public/ klasörü sunulur; sunucu ve proje dosyalarına erişile
     }
 });
 
+test('güvenlik başlıkları sayfa ve API yanıtlarında gönderilir', async () => {
+    for (const url of ['/', '/api/health']) {
+        const res = await fetch(baseUrl + url);
+        const csp = res.headers.get('content-security-policy') || '';
+        assert.match(csp, /default-src 'self'/, url);
+        assert.match(csp, /frame-ancestors 'none'/, url);
+        // Satır içi betiğe izin verilmemeli; XSS'e karşı asıl koruma bu
+        const scriptSrc = csp.split(';').find(part => part.trim().startsWith('script-src')) || '';
+        assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval/, url);
+        assert.equal(res.headers.get('x-content-type-options'), 'nosniff', url);
+        assert.equal(res.headers.get('x-frame-options'), 'DENY', url);
+        assert.equal(res.headers.get('x-powered-by'), null, url);
+    }
+});
+
+test('ön yüzde satır içi betik ve olay işleyicisi yok (CSP ile uyumlu)', () => {
+    const publicDir = path.join(__dirname, '..', '..', 'public');
+    const files = ['index.html', ...fs.readdirSync(publicDir).filter(f => f.endsWith('.js')),
+        ...fs.readdirSync(path.join(publicDir, 'documents')).map(f => path.join('documents', f))];
+    const offenders = [];
+    for (const file of files) {
+        const source = fs.readFileSync(path.join(publicDir, file), 'utf8')
+            .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        if (/\son[a-z]+\s*=\s*["']/i.test(source)) offenders.push(`${file}: satır içi olay işleyicisi`);
+        if (/<script(?![^>]*\bsrc=)[^>]*>/i.test(source)) offenders.push(`${file}: satır içi <script>`);
+        if (/javascript:/i.test(source)) offenders.push(`${file}: javascript: adresi`);
+    }
+    assert.equal(offenders.join(' | '), '');
+});
+
 test('günlük yedek oluşturulur ve eski yedekler silinir', () => {
     const dir = process.env.BACKUP_DIR;
     fs.mkdirSync(dir, { recursive: true });
@@ -304,4 +334,28 @@ test('günlük yedek oluşturulur ve eski yedekler silinir', () => {
 
     // Aynı gün ikinci kez yedek alınmaz
     assert.equal(backupDatabase(now).created, false);
+});
+
+test('oturum uzatma toplam süreyi 40 dakikanın üstüne çıkarmaz', async () => {
+    const jwt = require('jsonwebtoken');
+    const remainingMinutes = token => (jwt.decode(token).exp * 1000 - Date.now()) / 60000;
+
+    const login = await api('POST', '/api/auth/login', { body: { username: 'ayse', password: 'gizli-sifre' } });
+    let token = login.data.token;
+    assert.ok(remainingMinutes(token) <= 40);
+
+    for (let i = 0; i < 5; i++) {
+        const res = await api('POST', '/api/auth/extend', { token });
+        assert.equal(res.status, 200);
+        token = res.data.token;
+        assert.ok(remainingMinutes(token) <= 40.01, `uzatma ${i + 1}: ${remainingMinutes(token)} dk`);
+    }
+    assert.ok(remainingMinutes(token) > 39);
+
+    // Süresi azalmış bir oturum 10 dakika uzar
+    const shortToken = jwt.sign({ id: 'x', username: 'ayse', name: 'Ayşe', role: 'mufettis' }, process.env.JWT_SECRET, { expiresIn: 5 * 60 });
+    const extended = await api('POST', '/api/auth/extend', { token: shortToken });
+    const minutes = remainingMinutes(extended.data.token);
+    assert.ok(minutes > 14.9 && minutes <= 15.01, `beklenen ~15 dk, gelen ${minutes}`);
+    assert.equal(extended.data.message, 'Oturum 10 dakika uzatıldı');
 });

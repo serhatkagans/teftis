@@ -286,7 +286,7 @@ const DataService = {
     },
 
     async _apiUpdate(id, updateData) {
-        const response = await fetch(`${this.apiBaseUrl}/documents/${id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/documents/${encodeURIComponent(id)}`, {
             method: 'PUT',
             headers: this._getAuthHeaders(),
             body: JSON.stringify(updateData)
@@ -295,7 +295,7 @@ const DataService = {
     },
 
     async _apiGetById(id) {
-        const response = await fetch(`${this.apiBaseUrl}/documents/${id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/documents/${encodeURIComponent(id)}`, {
             headers: this._getAuthHeaders()
         });
         if (!response.ok) return null;
@@ -319,7 +319,7 @@ const DataService = {
     },
 
     async _apiDelete(id) {
-        const response = await fetch(`${this.apiBaseUrl}/documents/${id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/documents/${encodeURIComponent(id)}`, {
             method: 'DELETE',
             headers: this._getAuthHeaders()
         });
