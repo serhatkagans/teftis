@@ -2637,3 +2637,51 @@ textarea {
     display: flex;
     gap: var(--spacing-sm);
 }
+
+/* Belge listesi sayfalama */
+.documents-list-page .library-toolbar {
+    margin-bottom: var(--spacing-lg);
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.pagination-buttons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pagination-buttons .btn[disabled] {
+    cursor: default;
+}
+
+.pagination-buttons .btn-secondary[disabled] {
+    opacity: 0.5;
+}
+
+.pagination-gap {
+    color: var(--text-muted);
+    padding: 0 4px;
+}
+
+/* Belge işlem geçmişi */
+.history-table tr:hover {
+    cursor: default;
+}
+
+.history-empty {
+    color: var(--text-muted);
+}

@@ -109,8 +109,48 @@ const DataService = {
     },
 
     /**
+     * Get one page of documents
+     * @param {Object} options - { page, limit, search, category, template_code }
+     * @returns {Promise<{items: Array, total: number, page: number, limit: number, pages: number}>}
+     */
+    async getPage(options = {}) {
+        const page = options.page || 1;
+        const limit = options.limit || 20;
+
+        if (this.mode === 'localStorage') {
+            const all = await this._localGetAll(options);
+            const pages = Math.max(1, Math.ceil(all.length / limit));
+            return { items: all.slice((page - 1) * limit, page * limit), total: all.length, page, limit, pages };
+        }
+
+        const params = new URLSearchParams({ page, limit });
+        ['search', 'category', 'template_code'].forEach(key => {
+            if (options[key]) params.set(key, options[key]);
+        });
+        const response = await fetch(`${this.apiBaseUrl}/documents?${params}`, {
+            headers: this._getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Belgeler yüklenemedi (HTTP ' + response.status + ')');
+        return response.json();
+    },
+
+    /**
+     * Get the access/change history of a document
+     * @param {string} id
+     * @returns {Promise<Array<{created_at: string, username: string, action: string, ip: string}>>}
+     */
+    async getHistory(id) {
+        if (this.mode === 'localStorage') return [];
+        const response = await fetch(`${this.apiBaseUrl}/documents/${encodeURIComponent(id)}/history`, {
+            headers: this._getAuthHeaders()
+        });
+        if (!response.ok) return [];
+        return response.json();
+    },
+
+    /**
      * Delete a document
-     * @param {string} id 
+     * @param {string} id
      * @returns {Promise<{success: boolean}>}
      */
     async delete(id) {

@@ -7,3 +7,7 @@ server/teftis.db
 .claude/
 *.log
 server/.jwt_secret
+# Erişim/hata kayıtları ve günlük veritabanı yedekleri
+server/logs/
+server/backups/
+server/*.tmp

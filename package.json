@@ -2,10 +2,11 @@
     "name": "sorusturma-belge-uretim-modulu",
     "version": "1.0.0",
     "description": "Teftiş Kurulu Başkanlığı İnceleme ve Soruşturma Modülü",
-    "main": "server.js",
+    "main": "server/index.js",
     "scripts": {
         "start": "node server/index.js",
-        "dev": "node server/index.js"
+        "dev": "node server/index.js",
+        "test": "cd server && npm test"
     },
     "keywords": [
         "document",

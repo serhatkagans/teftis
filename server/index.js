@@ -4,24 +4,32 @@
  * Auth: JWT + bcrypt
  */
 
+// Önce server/.env, sonra çalışma klasöründeki .env okunur (var olan değerler ezilmez)
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const initSqlJs = require('sql.js');
-const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { createLogger, serializeError } = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = loadJwtSecret();
 const JWT_EXPIRES_IN = '40m';
-// Yeni hesap açma varsayılan olarak kapalıdır. Kullanıcı eklemek için
-// ALLOW_REGISTRATION=true verilir; hiç kullanıcı yoksa ilk hesap açılabilir.
-const ALLOW_REGISTRATION = process.env.ALLOW_REGISTRATION === 'true';
+
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'teftis.db');
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, 'backups');
+const BACKUP_KEEP_DAYS = parseInt(process.env.BACKUP_KEEP_DAYS, 10) || 14;
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+
+const logger = createLogger(process.env.LOG_DIR || path.join(__dirname, 'logs'), {
+    retentionDays: parseInt(process.env.LOG_RETENTION_DAYS, 10) || 90
+});
 
 // JWT anahtarı .env'de yoksa rastgele üretilip server/.jwt_secret dosyasında
 // saklanır (yeniden başlatmada oturumlar düşmesin). Koddaki sabit bir anahtar
@@ -43,8 +51,50 @@ function loadJwtSecret() {
     return secret;
 }
 
+// Yeni hesap açma varsayılan olarak kapalıdır. Kullanıcı eklemek için
+// ALLOW_REGISTRATION=true verilir; hiç kullanıcı yoksa ilk hesap açılabilir.
+function registrationAllowed() {
+    return process.env.ALLOW_REGISTRATION === 'true';
+}
+
 // Nginx gibi yerel bir ters vekil arkasında gerçek istemci IP'si (deneme sınırı için)
 app.set('trust proxy', 'loopback');
+
+// =====================================================
+// Erişim ve hata kaydı
+// =====================================================
+
+// Arama metni kişi adı / TC içerebilir; kayda yazılmaz
+function loggablePath(req) {
+    return req.originalUrl.split('?')[0].replace(/^(\/api\/documents\/search\/).+$/, '$1***');
+}
+
+function logError(req, error, status = 500) {
+    console.error(`${req ? `${req.method} ${loggablePath(req)}` : 'process'}:`, error);
+    logger.error({
+        status,
+        method: req ? req.method : null,
+        path: req ? loggablePath(req) : null,
+        ip: req ? req.ip : null,
+        user: req && req.user ? req.user.username : null,
+        error: serializeError(error)
+    });
+}
+
+app.use('/api', (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        logger.access({
+            ip: req.ip,
+            user: req.user ? req.user.username : null,
+            method: req.method,
+            path: loggablePath(req),
+            status: res.statusCode,
+            ms: Date.now() - start
+        });
+    });
+    next();
+});
 
 // Middleware
 // Arayüz aynı adresten sunulduğu için CORS gerekmez; başka bir kaynaktan
@@ -54,33 +104,29 @@ if (process.env.CORS_ORIGIN) {
 }
 app.use(express.json({ limit: '10mb' }));
 
-// Sunucu kodu, veritabanı ve bağımlılıklar dışarıya açılmasın
-app.use((req, res, next) => {
-    if (/^\/(server|node_modules|\.git|\.claude)(\/|$)/i.test(req.path) || /\.(py|db|sql|md)$/i.test(req.path)) {
-        return res.status(404).end();
-    }
-    next();
-});
+// Yalnızca arayüz dosyaları (public/) sunulur; sunucu kodu, veritabanı ve
+// proje klasöründeki diğer dosyalar dışarıdan erişilemez.
+app.use(express.static(PUBLIC_DIR));
 
-// Serve static files from parent directory
-app.use(express.static(path.join(__dirname, '..')));
-
+// =====================================================
 // Database
+// =====================================================
+
 let db;
-const dbPath = path.join(__dirname, 'teftis.db');
 
 async function initDatabase() {
     const SQL = await initSqlJs();
 
     // Load existing database or create new one
-    if (fs.existsSync(dbPath)) {
-        const fileBuffer = fs.readFileSync(dbPath);
-        db = new SQL.Database(fileBuffer);
-        console.log('✅ SQLite database loaded:', dbPath);
+    if (fs.existsSync(DB_PATH)) {
+        db = new SQL.Database(fs.readFileSync(DB_PATH));
+        console.log('✅ SQLite database loaded:', DB_PATH);
     } else {
         db = new SQL.Database();
-        console.log('✅ SQLite database created:', dbPath);
+        console.log('✅ SQLite database created:', DB_PATH);
     }
+
+    registerSqlFunctions();
 
     // Initialize tables with common searchable columns
     db.run(`
@@ -103,7 +149,7 @@ async function initDatabase() {
             template_code TEXT NOT NULL,
             template_name TEXT NOT NULL,
             category TEXT,
-            
+
             -- Ortak aranabilir alanlar (tüm şablonlarda geçerli)
             sorusturma_konusu TEXT,
             ad_soyad TEXT,
@@ -113,28 +159,40 @@ async function initDatabase() {
             yer TEXT,
             kurum_adi TEXT,
             konum TEXT,
-            
+
             -- Şikayetçi/Tanık bilgileri
             sikayetci_adi TEXT,
             sikayetci_tc TEXT,
             tanik_adi TEXT,
-            
+
             -- Müfettiş bilgileri
             muhakkik_adi TEXT,
             muhakkik_unvan TEXT,
             mufettis1_ad_soyad TEXT,
             mufettis2_ad_soyad TEXT,
-            
+
             -- Diğer yaygın alanlar
             ikametgah_adresi TEXT,
             telefon TEXT,
-            
+
             -- Tüm form verileri (tam veri - hiçbir şey kaybolmaz)
             form_data TEXT NOT NULL,
-            
+
             pdf_url TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Kim, ne zaman, hangi belge üzerinde ne yaptı
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id TEXT,
+            username TEXT,
+            action TEXT NOT NULL,
+            document_id TEXT,
+            ip TEXT,
+            details TEXT
         );
 
         -- Indexes for fast searching
@@ -145,6 +203,8 @@ async function initDatabase() {
         CREATE INDEX IF NOT EXISTS idx_documents_tc_kimlik ON documents(tc_kimlik);
         CREATE INDEX IF NOT EXISTS idx_documents_tarih ON documents(tarih);
         CREATE INDEX IF NOT EXISTS idx_documents_sikayetci_adi ON documents(sikayetci_adi);
+        CREATE INDEX IF NOT EXISTS idx_audit_document ON audit_log(document_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, created_at);
     `);
 
     // Insert test user if not exists
@@ -157,10 +217,82 @@ async function initDatabase() {
     console.log('✅ Database tables initialized with searchable columns');
 }
 
+// SQLite LIKE yalnızca İngilizce harflerde büyük/küçük ayırmaz;
+// Türkçe aramada (Ş/ş, İ/i, I/ı) iki taraf da bununla küçültülür.
+function registerSqlFunctions() {
+    db.create_function('tr_lower', value => (value == null ? null : String(value).toLocaleLowerCase('tr-TR')));
+}
+
+// sql.js export() bağlantıyı yeniden açar ve eklenen fonksiyonları düşürür
+function exportDatabase() {
+    const data = Buffer.from(db.export());
+    registerSqlFunctions();
+    return data;
+}
+
+// Veritabanı önce geçici dosyaya yazılıp sonra yerine taşınır: yazma yarıda
+// kesilirse (çökme, disk dolması) eski dosya sağlam kalır.
+function writeFileAtomic(filePath, data) {
+    const tmpPath = `${filePath}.${process.pid}.tmp`;
+    const fd = fs.openSync(tmpPath, 'w');
+    try {
+        fs.writeSync(fd, data);
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
+    }
+    fs.renameSync(tmpPath, filePath);
+}
+
+let saveTimer = null;
+
 function saveDatabase() {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(dbPath, buffer);
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+    writeFileAtomic(DB_PATH, exportDatabase());
+}
+
+// Yalnızca kayıt (audit) satırı eklenen istekler için: art arda gelen
+// yazmalar tek seferde diske aktarılır
+function scheduleSave() {
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => {
+        saveTimer = null;
+        try {
+            saveDatabase();
+        } catch (error) {
+            logError(null, error);
+        }
+    }, 1000);
+    saveTimer.unref();
+}
+
+function flushDatabase() {
+    if (saveTimer && db) saveDatabase();
+}
+
+// Günde bir yedek: backups/teftis-YYYY-MM-DD.db; BACKUP_KEEP_DAYS günden eskiler silinir
+function backupDatabase(now = new Date()) {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const day = now.toISOString().slice(0, 10);
+    const target = path.join(BACKUP_DIR, `teftis-${day}.db`);
+    let created = false;
+    if (!fs.existsSync(target)) {
+        writeFileAtomic(target, exportDatabase());
+        created = true;
+        console.log('💾 Veritabanı yedeklendi:', target);
+    }
+
+    const cutoff = new Date(now.getTime() - BACKUP_KEEP_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    for (const file of fs.readdirSync(BACKUP_DIR)) {
+        const match = file.match(/^teftis-(\d{4}-\d{2}-\d{2})\.db$/);
+        if (match && match[1] < cutoff) {
+            fs.unlinkSync(path.join(BACKUP_DIR, file));
+        }
+    }
+    return { file: target, created };
 }
 
 // Helper: Extract common fields from form_data
@@ -186,25 +318,57 @@ function extractCommonFields(formData) {
     };
 }
 
+// Bir işlemi kayıt tablosuna yazar. Kaydın kendisi hata verirse istek bozulmaz.
+function audit(req, action, { documentId = null, details = null, user = req.user } = {}) {
+    try {
+        db.run(`INSERT INTO audit_log (created_at, user_id, username, action, document_id, ip, details)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`, [
+            new Date().toISOString(),
+            user ? user.id : null,
+            user ? user.username : null,
+            action,
+            documentId,
+            req.ip || null,
+            details ? JSON.stringify(details) : null
+        ]);
+        scheduleSave();
+    } catch (error) {
+        logError(req, error);
+    }
+}
+
 // =====================================================
 // Auth Middleware
 // =====================================================
 
-function authenticateToken(req, res, next) {
+function readToken(req) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    return authHeader && authHeader.split(' ')[1];
+}
+
+function authenticateToken(req, res, next) {
+    const token = readToken(req);
 
     if (!token) {
         return res.status(401).json({ error: 'Token gerekli' });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Geçersiz token' });
-        }
-        req.user = user;
-        next();
-    });
+    try {
+        req.user = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+        // Süresi dolmuş/geçersiz oturum: istemci yeniden giriş yapmalı (401)
+        return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş' });
+    }
+    next();
+}
+
+// Token varsa ve geçerliyse req.user'ı doldurur, yoksa isteği engellemez
+function optionalAuth(req, res, next) {
+    const token = readToken(req);
+    if (token) {
+        try { req.user = jwt.verify(token, JWT_SECRET); } catch (err) { /* yoksay */ }
+    }
+    next();
 }
 
 // Parametreli sorgu yardımcıları (SQL enjeksiyonuna karşı)
@@ -229,19 +393,14 @@ function findOwnDocument(id, userId) {
     return queryRows('SELECT * FROM documents WHERE id = ? AND user_id = ?', [id, userId])[0] || null;
 }
 
-// Optional auth - sets req.user if token exists, but doesn't require it
-function optionalAuth(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+// Kullanıcı aramasını LIKE desenine çevirir (% ve _ joker olarak değil harfiyen aranır)
+function likePattern(text) {
+    const escaped = String(text).toLocaleLowerCase('tr-TR').replace(/[\\%_]/g, ch => `\\${ch}`);
+    return `%${escaped}%`;
+}
 
-    if (token) {
-        jwt.verify(token, JWT_SECRET, (err, user) => {
-            if (!err) {
-                req.user = user;
-            }
-        });
-    }
-    next();
+function searchClause(columns) {
+    return `(${columns.map(col => `tr_lower(${col}) LIKE ? ESCAPE '\\'`).join(' OR ')})`;
 }
 
 // =====================================================
@@ -298,7 +457,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         // İlk hesap her zaman açılabilir; sonrası yalnızca ALLOW_REGISTRATION=true iken
         const hasUsers = queryRows('SELECT id FROM users WHERE password IS NOT NULL LIMIT 1').length > 0;
-        if (hasUsers && !ALLOW_REGISTRATION) {
+        if (hasUsers && !registrationAllowed()) {
             return res.status(403).json({ error: 'Yeni hesap açma kapalı. Hesap için sistem yöneticinize başvurun.' });
         }
 
@@ -320,7 +479,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        const id = uuidv4();
+        const id = crypto.randomUUID();
         const now = new Date().toISOString();
 
         db.run(`
@@ -328,19 +487,17 @@ app.post('/api/auth/register', async (req, res) => {
             VALUES (?, ?, ?, ?, ?, 'mufettis', 'local', ?, ?)
         `, [id, username, hashedPassword, name, email || null, now, now]);
 
+        const user = { id, username, name, role: 'mufettis' };
+        audit(req, 'auth.register', { user });
         saveDatabase();
 
         // Generate token
-        const token = jwt.sign({ id, username, name, role: 'mufettis' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const token = jwt.sign(user, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
         console.log('✅ User registered:', username);
-        res.status(201).json({
-            message: 'Kayıt başarılı',
-            token,
-            user: { id, username, name, role: 'mufettis' }
-        });
+        res.status(201).json({ message: 'Kayıt başarılı', token, user });
     } catch (error) {
-        console.error('Register error:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -355,38 +512,27 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         if (isAuthLimited(req)) {
+            audit(req, 'auth.login_blocked', { details: { username: String(username) } });
             return res.status(429).json(TOO_MANY_ATTEMPTS);
         }
 
         // Find user
         const user = queryRows('SELECT * FROM users WHERE username = ?', [username])[0];
-        if (!user || !user.password) {
-            recordAuthFailure(req);
-            return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı' });
-        }
-
-        // Check password
-        const validPassword = await bcrypt.compare(password, user.password);
+        const validPassword = user && user.password ? await bcrypt.compare(password, user.password) : false;
         if (!validPassword) {
             recordAuthFailure(req);
+            audit(req, 'auth.login_failed', { details: { username: String(username) } });
             return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı' });
         }
 
-        // Generate token
-        const token = jwt.sign(
-            { id: user.id, username: user.username, name: user.name, role: user.role },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
-        );
+        const sessionUser = { id: user.id, username: user.username, name: user.name, role: user.role };
+        const token = jwt.sign(sessionUser, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+        audit(req, 'auth.login', { user: sessionUser });
         console.log('✅ User logged in:', username);
-        res.json({
-            message: 'Giriş başarılı',
-            token,
-            user: { id: user.id, username: user.username, name: user.name, role: user.role }
-        });
+        res.json({ message: 'Giriş başarılı', token, user: sessionUser });
     } catch (error) {
-        console.error('Login error:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -403,7 +549,6 @@ app.post('/api/auth/extend', authenticateToken, (req, res) => {
 
         // Add 10 minutes (600000 ms) to remaining time
         const newRemainingMs = remainingMs + (10 * 60 * 1000);
-        const newExpSeconds = Math.floor((now + newRemainingMs) / 1000);
 
         // Generate new token with calculated expiration
         const token = jwt.sign(
@@ -412,27 +557,26 @@ app.post('/api/auth/extend', authenticateToken, (req, res) => {
             { expiresIn: Math.floor(newRemainingMs / 1000) } // seconds
         );
 
-        console.log('🔄 Session extended for:', user.username, '- Added 10 minutes, new remaining:', Math.floor(newRemainingMs / 60000), 'min');
+        audit(req, 'auth.extend');
         res.json({
             message: 'Oturum 10 dakika uzatıldı',
             token,
             user: { id: user.id, username: user.username, name: user.name, role: user.role }
         });
     } catch (error) {
-        console.error('Extend error:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
-
-// Get current user
 
 // Get current user
 app.get('/api/auth/me', authenticateToken, (req, res) => {
     res.json({ user: req.user });
 });
 
-// Logout (client-side - just return success)
-app.post('/api/auth/logout', (req, res) => {
+// Logout (token istemcide silinir; burada yalnızca kayda geçer)
+app.post('/api/auth/logout', optionalAuth, (req, res) => {
+    if (req.user) audit(req, 'auth.logout');
     res.json({ message: 'Çıkış başarılı' });
 });
 
@@ -450,34 +594,51 @@ const SEARCHABLE_COLUMNS = ['sorusturma_konusu', 'ad_soyad', 'tc_kimlik', 'tarih
     'sikayetci_adi', 'sikayetci_tc', 'tanik_adi', 'muhakkik_adi', 'muhakkik_unvan',
     'mufettis1_ad_soyad', 'mufettis2_ad_soyad', 'ikametgah_adresi', 'telefon'];
 
+const LIST_SEARCH_COLUMNS = ['sorusturma_konusu', 'ad_soyad', 'sikayetci_adi', 'tanik_adi', 'tc_kimlik',
+    'template_name', 'template_code'];
+
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
 // Get all documents
+// ?page=N verilirse { items, total, page, limit, pages } döner; verilmezse tüm liste (dizi).
 app.get('/api/documents', authenticateToken, (req, res) => {
     try {
         const { search, template_code, category } = req.query;
 
-        let query = 'SELECT * FROM documents WHERE user_id = ?';
+        let where = 'WHERE user_id = ?';
         const params = [req.user.id];
 
         if (search) {
-            query += ` AND (sorusturma_konusu LIKE ? OR ad_soyad LIKE ? OR sikayetci_adi LIKE ? OR tc_kimlik LIKE ?)`;
-            params.push(...Array(4).fill(`%${search}%`));
+            where += ` AND ${searchClause(LIST_SEARCH_COLUMNS)}`;
+            params.push(...Array(LIST_SEARCH_COLUMNS.length).fill(likePattern(search)));
         }
 
         if (template_code) {
-            query += ' AND template_code = ?';
+            where += ' AND template_code = ?';
             params.push(template_code);
         }
 
         if (category) {
-            query += ' AND category = ?';
+            where += ' AND category = ?';
             params.push(category);
         }
 
-        query += ' ORDER BY created_at DESC';
+        const orderBy = 'ORDER BY created_at DESC, id';
 
-        res.json(queryRows(query, params).map(toDocument));
+        if (req.query.page === undefined) {
+            return res.json(queryRows(`SELECT * FROM documents ${where} ${orderBy}`, params).map(toDocument));
+        }
+
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_PAGE_SIZE));
+        const total = queryRows(`SELECT COUNT(*) AS total FROM documents ${where}`, params)[0].total;
+        const items = queryRows(`SELECT * FROM documents ${where} ${orderBy} LIMIT ? OFFSET ?`,
+            [...params, limit, (page - 1) * limit]).map(toDocument);
+
+        res.json({ items, total, page, limit, pages: Math.max(1, Math.ceil(total / limit)) });
     } catch (error) {
-        console.error('Error fetching documents:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -485,18 +646,16 @@ app.get('/api/documents', authenticateToken, (req, res) => {
 // Search documents
 app.get('/api/documents/search/:query', authenticateToken, (req, res) => {
     try {
-        const like = `%${req.params.query.toLowerCase()}%`;
+        const columns = ['sorusturma_konusu', 'ad_soyad', 'sikayetci_adi', 'tc_kimlik', 'tanik_adi'];
         const documents = queryRows(`
             SELECT * FROM documents
-            WHERE user_id = ?
-              AND (sorusturma_konusu LIKE ? OR ad_soyad LIKE ? OR sikayetci_adi LIKE ?
-                   OR tc_kimlik LIKE ? OR tanik_adi LIKE ?)
+            WHERE user_id = ? AND ${searchClause(columns)}
             ORDER BY created_at DESC
-        `, [req.user.id, ...Array(5).fill(like)]);
+        `, [req.user.id, ...Array(columns.length).fill(likePattern(req.params.query))]);
 
         res.json(documents.map(toDocument));
     } catch (error) {
-        console.error('Error searching documents:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -508,9 +667,29 @@ app.get('/api/documents/:id', authenticateToken, (req, res) => {
         if (!doc) {
             return res.status(404).json({ error: 'Document not found' });
         }
+        audit(req, 'document.view', { documentId: doc.id });
         res.json(toDocument(doc));
     } catch (error) {
-        console.error('Error fetching document:', error);
+        logError(req, error);
+        res.status(500).json({ error: 'Sunucu hatası' });
+    }
+});
+
+// Belgenin işlem geçmişi (yalnızca sahibi görebilir)
+app.get('/api/documents/:id/history', authenticateToken, (req, res) => {
+    try {
+        if (!findOwnDocument(req.params.id, req.user.id)) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+        const rows = queryRows(`
+            SELECT created_at, username, action, ip FROM audit_log
+            WHERE document_id = ?
+            ORDER BY id DESC
+            LIMIT 200
+        `, [req.params.id]);
+        res.json(rows);
+    } catch (error) {
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -520,7 +699,11 @@ app.post('/api/documents', authenticateToken, (req, res) => {
     try {
         const { template_code, template_name, category, form_data } = req.body;
 
-        const id = uuidv4();
+        if (!template_code || !template_name) {
+            return res.status(400).json({ error: 'template_code ve template_name gerekli' });
+        }
+
+        const id = crypto.randomUUID();
         const now = new Date().toISOString();
         const common = extractCommonFields(form_data || {});
 
@@ -532,11 +715,11 @@ app.post('/api/documents', authenticateToken, (req, res) => {
 
         db.run(`INSERT INTO documents (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`, values);
 
+        audit(req, 'document.create', { documentId: id, details: { template_code } });
         saveDatabase();
-        console.log('✅ Document saved:', id, '- Person:', common.sorusturma_konusu || common.ad_soyad || common.sikayetci_adi);
         res.status(201).json({ id });
     } catch (error) {
-        console.error('Error creating document:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -558,22 +741,21 @@ app.put('/api/documents/:id', authenticateToken, (req, res) => {
             updateParts.push('form_data = ?');
             params.push(JSON.stringify(form_data));
 
-            // Update common columns if form_data changed
+            // Aranabilir sütunlar form verisiyle birlikte güncellenir; silinen alan sütunda da boşalır
             const common = extractCommonFields(form_data);
-            for (const col of ['sorusturma_konusu', 'ad_soyad', 'tc_kimlik', 'tarih', 'sikayetci_adi']) {
-                if (common[col]) {
-                    updateParts.push(`${col} = ?`);
-                    params.push(common[col]);
-                }
+            for (const col of SEARCHABLE_COLUMNS) {
+                updateParts.push(`${col} = ?`);
+                params.push(common[col] || null);
             }
         }
 
         db.run(`UPDATE documents SET ${updateParts.join(', ')} WHERE id = ? AND user_id = ?`, [...params, id, req.user.id]);
 
+        audit(req, 'document.update', { documentId: id });
         saveDatabase();
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating document:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -583,16 +765,18 @@ app.delete('/api/documents/:id', authenticateToken, (req, res) => {
     try {
         const { id } = req.params;
 
-        if (!findOwnDocument(id, req.user.id)) {
+        const doc = findOwnDocument(id, req.user.id);
+        if (!doc) {
             return res.status(404).json({ error: 'Document not found' });
         }
 
         db.run('DELETE FROM documents WHERE id = ? AND user_id = ?', [id, req.user.id]);
 
+        audit(req, 'document.delete', { documentId: id, details: { template_code: doc.template_code } });
         saveDatabase();
         res.json({ success: true });
     } catch (error) {
-        console.error('Error deleting document:', error);
+        logError(req, error);
         res.status(500).json({ error: 'Sunucu hatası' });
     }
 });
@@ -643,6 +827,14 @@ function getPdfBrowser() {
         }).catch(() => { pdfBrowserPromise = null; });
     }
     return pdfBrowserPromise;
+}
+
+async function closePdfBrowser() {
+    if (!pdfBrowserPromise) return;
+    try {
+        const browser = await pdfBrowserPromise;
+        await browser.close();
+    } catch (e) { /* yoksay */ }
 }
 
 // Aynı anda en fazla bu kadar PDF üretilir; fazlası sırada bekler
@@ -724,10 +916,11 @@ app.post('/api/pdf', authenticateToken, async (req, res) => {
             margin: { top: '15mm', right: '15mm', bottom: '15mm', left: '15mm' }
         });
 
+        audit(req, 'pdf.generate', { details: { bytes: pdf.length } });
         res.setHeader('Content-Type', 'application/pdf');
         res.send(Buffer.from(pdf));
     } catch (error) {
-        console.error('PDF generation error:', error);
+        logError(req, error);
         res.status(500).json({ error: 'PDF üretilemedi' });
     } finally {
         if (page) {
@@ -737,17 +930,62 @@ app.post('/api/pdf', authenticateToken, async (req, res) => {
     }
 });
 
+// Bilinmeyen API adresleri HTML yerine JSON 404 döner
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: 'Bulunamadı' });
+});
+
+// Yakalanmamış hatalar (bozuk JSON gövdesi, çok büyük istek vb.)
+app.use((err, req, res, next) => {
+    const status = err.status || err.statusCode || 500;
+    logError(req, err, status);
+    if (res.headersSent) return next(err);
+    let message = 'Sunucu hatası';
+    if (err.type === 'entity.parse.failed') message = 'Geçersiz JSON';
+    else if (err.type === 'entity.too.large') message = 'İstek çok büyük';
+    else if (status < 500) message = 'Geçersiz istek';
+    res.status(status).json({ error: message });
+});
+
 // =====================================================
 // Start Server
 // =====================================================
 
-initDatabase().then(() => {
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on http://localhost:${PORT}`);
-        console.log(`📋 API available at http://localhost:${PORT}/api`);
-        console.log(`🔍 Search API: http://localhost:${PORT}/api/documents/search/{query}`);
+async function start() {
+    await initDatabase();
+    logger.prune();
+
+    const runBackup = () => {
+        try { backupDatabase(); } catch (error) { logError(null, error); }
+    };
+    runBackup();
+    setInterval(() => { runBackup(); logger.prune(); }, 60 * 60 * 1000).unref();
+
+    process.on('unhandledRejection', reason => logError(null, reason instanceof Error ? reason : new Error(String(reason))));
+    process.on('uncaughtException', error => {
+        logError(null, error);
+        try { flushDatabase(); } catch (e) { /* yoksay */ }
+        process.exit(1);
     });
-}).catch(err => {
-    console.error('Failed to initialize database:', err);
-    process.exit(1);
-});
+
+    const shutdown = async () => {
+        try { flushDatabase(); } catch (error) { logError(null, error); }
+        await closePdfBrowser();
+        process.exit(0);
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+
+    return app.listen(PORT, () => {
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+}
+
+if (require.main === module) {
+    start().catch(err => {
+        console.error('Failed to initialize database:', err);
+        process.exit(1);
+    });
+}
+
+module.exports = { app, initDatabase, saveDatabase, flushDatabase, backupDatabase, logger };

@@ -306,10 +306,13 @@ function updateActiveNav() {
 async function renderHomePage() {
     const mainContent = document.getElementById('mainContent');
 
-    // Get saved documents with error handling
-    let savedDocuments = [];
+    // Yalnızca sayı ve en son belge gerekir; tüm liste çekilmez
+    let savedCount = 0;
+    let lastDoc = null;
     try {
-        savedDocuments = await DataService.getAll();
+        const firstPage = await DataService.getPage({ page: 1, limit: 1 });
+        savedCount = firstPage.total;
+        lastDoc = firstPage.items[0] || null;
     } catch (error) {
         console.error('Failed to load documents:', error);
         // Show silent toast or ignore if just loading home
@@ -321,15 +324,15 @@ async function renderHomePage() {
 
     // Build compact saved documents notification bar (only if documents exist)
     let savedDocsNotification = '';
-    if (savedDocuments.length > 0) {
-        const lastDoc = savedDocuments[0]; // Most recent
+    if (savedCount > 0) {
+        const lastName = lastDoc ? (lastDoc.person_name || DataService._extractPersonName(lastDoc.form_data || {})) : null;
         savedDocsNotification = `
             <div class="saved-docs-notification">
                 <div class="notification-content">
                     <span class="notification-icon">📋</span>
                     <span class="notification-text">
-                        <strong>${savedDocuments.length}</strong> kayıtlı belge mevcut
-                        ${lastDoc.person_name ? ` • Son: <strong>${lastDoc.person_name}</strong>` : ''}
+                        <strong>${savedCount}</strong> kayıtlı belge mevcut
+                        ${lastName ? ` • Son: <strong>${escapeHtml(lastName)}</strong>` : ''}
                     </span>
                 </div>
                 <a href="#/documents" onclick="navigateTo('documents'); return false;" class="notification-link">
@@ -391,9 +394,9 @@ async function renderHomePage() {
                 <span class="stat-item implemented">
                     <strong>${TEMPLATE_LIBRARY.filter(t => t.implemented).length}</strong> aktif
                 </span>
-                ${savedDocuments.length > 0 ? `
+                ${savedCount > 0 ? `
                     <span class="stat-item saved">
-                        <strong>${savedDocuments.length}</strong> kayıtlı belge
+                        <strong>${savedCount}</strong> kayıtlı belge
                     </span>
                 ` : ''}
             </div>
@@ -1029,8 +1032,15 @@ async function renderDocumentDetailPage(documentId) {
                     ${renderFormDataTable(escapeFormData(doc.form_data))}
                 </div>
             </div>
+
+            <div class="document-data-section">
+                <h3>🕘 İşlem Geçmişi</h3>
+                <div id="documentHistory"><p class="history-empty">Yükleniyor...</p></div>
+            </div>
         </div>
     `;
+
+    loadDocumentHistory(documentId);
 
     // Render preview
     const previewContainer = document.getElementById('documentPreview');
@@ -1108,6 +1118,42 @@ async function renderDocumentDetailPage(documentId) {
 
     // Update breadcrumb
     currentRoute.category = doc.category;
+}
+
+const HISTORY_ACTION_LABELS = {
+    'document.create': 'Oluşturuldu',
+    'document.view': 'Görüntülendi',
+    'document.update': 'Güncellendi',
+    'document.delete': 'Silindi'
+};
+
+async function loadDocumentHistory(documentId) {
+    const history = await DataService.getHistory(documentId);
+    const container = document.getElementById('documentHistory');
+    if (!container) return;
+
+    if (history.length === 0) {
+        container.innerHTML = '<p class="history-empty">Kayıtlı işlem yok.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="documents-table history-table">
+            <thead>
+                <tr><th>Tarih</th><th>İşlem</th><th>Kullanıcı</th><th>IP</th></tr>
+            </thead>
+            <tbody>
+                ${history.map(entry => `
+                    <tr>
+                        <td>${escapeHtml(DataService.formatDate(entry.created_at))}</td>
+                        <td>${escapeHtml(HISTORY_ACTION_LABELS[entry.action] || entry.action)}</td>
+                        <td>${escapeHtml(entry.username || '-')}</td>
+                        <td>${escapeHtml(entry.ip || '-')}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 function renderFormDataTable(formData) {
@@ -1188,7 +1234,8 @@ async function deleteDocument(documentId) {
 
     if (result.success) {
         showToast('Belge silindi', 'success');
-        navigateTo('');
+        if (currentRoute.view === 'documents-list') loadDocumentsPage();
+        else navigateTo('documents');
     } else {
         showToast('Silme işlemi başarısız', 'error');
     }
@@ -1266,106 +1313,185 @@ async function generatePDFFromData(formData, templateCode, templateName) {
 // Documents List Page
 // =====================================================
 
+// Liste sayfası durumu: belge açıp geri dönünce aynı sayfa/arama korunur
+const documentsListState = { page: 1, limit: 20, search: '', category: '' };
+let documentsListRequestId = 0;
+let documentsSearchTimer = null;
+
 async function renderDocumentsListPage() {
     const mainContent = document.getElementById('mainContent');
-    const documents = await DataService.getAll();
 
-    if (documents.length === 0) {
-        mainContent.innerHTML = `
-            <div class="documents-list-page">
-                <h1>📋 Tüm Belgeler</h1>
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <h3>Henüz kayıtlı belge yok</h3>
-                    <p>Şablon sayfalarından form doldurup kaydedebilirsiniz.</p>
-                    <button class="btn btn-primary" onclick="navigateTo('')" style="margin-top: 20px;">
-                        <span>🏠</span> Ana Sayfa
-                    </button>
+    mainContent.innerHTML = `
+        <div class="documents-list-page">
+            <div class="section-header" style="margin-bottom: 20px;">
+                <h1 style="margin: 0;">📋 Tüm Belgeler <span id="documentsTotal"></span></h1>
+            </div>
+
+            <div class="library-toolbar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="documentsSearchInput" placeholder="Kişi adı, TC kimlik, şablon adı veya kodu..."
+                           value="${escapeHtml(documentsListState.search)}"
+                           oninput="handleDocumentsSearch(this.value)">
                 </div>
+                <div class="filter-box">
+                    <label for="documentsCategoryFilter">Kategori:</label>
+                    <select id="documentsCategoryFilter" onchange="handleDocumentsCategory(this.value)">
+                        <option value="">Tüm Kategoriler</option>
+                        ${CATEGORY_ORDER.map(cat => `
+                            <option value="${escapeHtml(cat)}" ${cat === documentsListState.category ? 'selected' : ''}>${escapeHtml(cat)}</option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <div id="documentsResults">
+                <div class="loading-page">
+                    <div class="loading-spinner"></div>
+                    <p>Belgeler yükleniyor...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await loadDocumentsPage();
+}
+
+function handleDocumentsSearch(value) {
+    clearTimeout(documentsSearchTimer);
+    documentsSearchTimer = setTimeout(() => {
+        documentsListState.search = value.trim();
+        documentsListState.page = 1;
+        loadDocumentsPage();
+    }, 300);
+}
+
+function handleDocumentsCategory(value) {
+    documentsListState.category = value;
+    documentsListState.page = 1;
+    loadDocumentsPage();
+}
+
+function goToDocumentsPage(page) {
+    documentsListState.page = page;
+    loadDocumentsPage();
+    const results = document.getElementById('documentsResults');
+    if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function loadDocumentsPage() {
+    const requestId = ++documentsListRequestId;
+    const { page, limit, search, category } = documentsListState;
+
+    let result;
+    try {
+        result = await DataService.getPage({ page, limit, search, category });
+    } catch (error) {
+        console.error('Failed to load documents:', error);
+        result = null;
+    }
+
+    // Kullanıcı bu arada başka sayfa/arama istediyse eski yanıtı gösterme
+    if (requestId !== documentsListRequestId) return;
+    const container = document.getElementById('documentsResults');
+    if (!container) return;
+
+    if (!result) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">⚠️</div>
+                <h3>Belgeler yüklenemedi</h3>
+                <button class="btn btn-secondary" onclick="loadDocumentsPage()" style="margin-top: 20px;">Tekrar Dene</button>
             </div>
         `;
         return;
     }
 
-    mainContent.innerHTML = `
-        <div class="documents-list-page">
-            <div class="section-header" style="margin-bottom: 20px;">
-                <h1 style="margin: 0;">📋 Tüm Belgeler (${documents.length})</h1>
+    // Son sayfadaki son belge silindiyse bir önceki sayfaya geç
+    if (result.items.length === 0 && result.total > 0 && page > result.pages) {
+        documentsListState.page = result.pages;
+        return loadDocumentsPage();
+    }
+
+    const totalEl = document.getElementById('documentsTotal');
+    if (totalEl) totalEl.textContent = `(${result.total})`;
+
+    if (result.total === 0) {
+        const filtered = search || category;
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">${filtered ? '🔎' : '📭'}</div>
+                <h3>${filtered ? 'Aramanıza uyan belge bulunamadı' : 'Henüz kayıtlı belge yok'}</h3>
+                <p>${filtered ? 'Arama metnini veya kategoriyi değiştirmeyi deneyin.' : 'Şablon sayfalarından form doldurup kaydedebilirsiniz.'}</p>
+                ${filtered ? '' : `
+                    <button class="btn btn-primary" onclick="navigateTo('')" style="margin-top: 20px;">
+                        <span>🏠</span> Ana Sayfa
+                    </button>
+                `}
             </div>
-            
-            <div class="document-groups">
-                ${(() => {
-            // Group documents by category
-            const grouped = {};
-            documents.forEach(doc => {
-                let cat = doc.category || 'Diğer';
-                // Normalize legacy category name
-                if (cat === 'İfadeler') cat = 'İfade Tutanakları';
+        `;
+        return;
+    }
 
-                if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(doc);
-            });
+    const first = (result.page - 1) * result.limit + 1;
+    const last = first + result.items.length - 1;
 
-            // Determine order (use predefined order, append 'Diğer' at end)
-            const catsToRender = [...CATEGORY_ORDER];
-            if (grouped['Diğer']) catsToRender.push('Diğer');
-            // Add any other categories that might exist but not in ORDER
-            Object.keys(grouped).forEach(cat => {
-                if (!catsToRender.includes(cat) && cat !== 'Diğer') catsToRender.push(cat);
-            });
+    container.innerHTML = `
+        <table class="documents-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Kod</th>
+                    <th>Şablon</th>
+                    <th style="width: 220px;">Kategori</th>
+                    <th style="width: 160px;">Oluşturulma</th>
+                    <th style="width: 100px;">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${result.items.map(doc => {
+        const name = doc.person_name || (doc.form_data ? DataService._extractPersonName(doc.form_data) : null);
+        const id = encodeURIComponent(doc.id);
+        return `
+                    <tr onclick="navigateTo('documents/${id}')">
+                        <td><span class="doc-code">${escapeHtml(doc.template_code)}</span></td>
+                        <td>
+                            <div>${escapeHtml(doc.template_name)}</div>
+                            ${name ? `<div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">👤 ${escapeHtml(name)}</div>` : ''}
+                        </td>
+                        <td>${escapeHtml(doc.category === 'İfadeler' ? 'İfade Tutanakları' : (doc.category || 'Diğer'))}</td>
+                        <td>${formatRelativeDate(doc.created_at)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" title="Düzenle" onclick="event.stopPropagation(); navigateTo('documents/${id}/edit')">✏️</button>
+                            <button class="btn btn-sm btn-danger" title="Sil" onclick="event.stopPropagation(); deleteDocument('${id}')">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+    }).join('')}
+            </tbody>
+        </table>
 
-            return catsToRender.map((category, index) => {
-                const docs = grouped[category];
-                if (!docs) return '';
-
-                const icon = CATEGORY_ICONS[category] || '📄';
-                const collapsedClass = 'collapsed'; // Start collapsed like Home Page
-                const categoryNumber = CATEGORY_ORDER.includes(category) ? `${CATEGORY_ORDER.indexOf(category) + 1} ` : '';
-
-                return `
-                            <div class="category-group ${collapsedClass}">
-                                <div class="category-header" onclick="toggleCategory(this)">
-                                    <span class="category-icon">${icon}</span>
-                                    <h2 class="category-title">${categoryNumber}${category}</h2>
-                                    <span class="category-count">${docs.length}</span>
-                                    <span class="category-toggle">▼</span>
-                                </div>
-                                <div class="category-items" style="padding: 0;">
-                                    <table class="documents-table" style="margin: 0; box-shadow: none; border-top: 1px solid var(--border-color);">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 80px;">Kod</th>
-                                                <th>Şablon</th>
-                                                <th style="width: 200px;">Oluşturulma</th>
-                                                <th style="width: 100px;">İşlemler</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${docs.map(doc => `
-                                                <tr onclick="navigateTo('documents/${doc.id}')">
-                                                    <td><span class="doc-code">${escapeHtml(doc.template_code)}</span></td>
-                                                    <td>
-                                                        <div>${escapeHtml(doc.template_name)}</div>
-                                                        ${(() => {
-                        const name = doc.person_name || (doc.form_data ? DataService._extractPersonName(doc.form_data) : null);
-                        return name ? `<div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">👤 ${escapeHtml(name)}</div>` : '';
-                    })()}
-                                                    </td>
-                                                    <td>${formatRelativeDate(doc.created_at)}</td>
-                                                    <td>
-                                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); navigateTo('documents/${doc.id}/edit')">✏️</button>
-                                                        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteDocument('${doc.id}')">🗑️</button>
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        `;
-            }).join('');
-        })()}
-            </div>
+        <div class="pagination">
+            <span class="pagination-info">${first}–${last} / ${result.total} belge</span>
+            ${result.pages > 1 ? `<div class="pagination-buttons">${renderPaginationButtons(result.page, result.pages)}</div>` : ''}
         </div>
     `;
+}
+
+// Sayfa düğmeleri: ilk, son ve geçerli sayfanın iki yanındaki sayfalar; aradakiler "…"
+function renderPaginationButtons(current, pages) {
+    const numbers = [];
+    for (let p = 1; p <= pages; p++) {
+        if (p === 1 || p === pages || Math.abs(p - current) <= 2) numbers.push(p);
+    }
+
+    const buttons = [];
+    buttons.push(`<button class="btn btn-sm btn-secondary" ${current === 1 ? 'disabled' : ''} onclick="goToDocumentsPage(${current - 1})">‹ Önceki</button>`);
+    numbers.forEach((p, i) => {
+        if (i > 0 && p - numbers[i - 1] > 1) buttons.push('<span class="pagination-gap">…</span>');
+        buttons.push(p === current
+            ? `<button class="btn btn-sm btn-primary" aria-current="page" disabled>${p}</button>`
+            : `<button class="btn btn-sm btn-secondary" onclick="goToDocumentsPage(${p})">${p}</button>`);
+    });
+    buttons.push(`<button class="btn btn-sm btn-secondary" ${current === pages ? 'disabled' : ''} onclick="goToDocumentsPage(${current + 1})">Sonraki ›</button>`);
+    return buttons.join('');
 }

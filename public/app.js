@@ -3655,7 +3655,12 @@ function renderTemplate23(data) {
     `;
 }
 
-// ... (createPDFContent23 - unchanged)
+function createPDFContent23(data) {
+    const container = document.createElement('div');
+    container.style.cssText = 'font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.5; color: #000; background: #fff; width: 165mm; max-width: 100%; box-sizing: border-box; word-wrap: break-word; overflow-wrap: break-word; margin: 0 auto;';
+    container.innerHTML = renderTemplate23(data);
+    return container;
+}
 
 // ==========================================
 // Şablon 2.4: Zorla Getirme Yazısı
@@ -5898,7 +5903,7 @@ function createPDFContent12(data, isYeminli = false) {
         </div>
         
         <div style="margin-bottom: 15px;">
-            ${data.soru_cevap.map(item => `
+            ${(data.soru_cevap || []).map(item => `
                 <div style="margin-bottom: 15px; page-break-inside: avoid;">
                     <div style="font-weight: bold; margin-bottom: 5px;">SORU ${item.index}: ${item.soru || '.....'}</div>
                     <div style="margin-left: 20px; text-align: justify;"><strong>CEVAP:</strong> ${item.cevap || '.....'}</div>

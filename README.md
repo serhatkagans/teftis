@@ -1,7 +1,8 @@
 # Teftiş Kurulu Başkanlığı — İnceleme ve Soruşturma Modülü
 
-Belge şablonlarından tutanak/yazı üreten web uygulaması. Arayüz statik dosyalar (`index.html`, `app.js`, ...),
-arka uç `server/index.js` (Express + SQLite/sql.js). PDF'ler sunucuda headless Chrome ile üretilir (`/api/pdf`).
+Belge şablonlarından tutanak/yazı üreten web uygulaması. Arayüz `public/` klasöründeki statik dosyalar
+(`index.html`, `app.js`, ...), arka uç `server/index.js` (Express + SQLite/sql.js). Sunucu yalnızca `public/`
+klasörünü dışarıya açar. PDF'ler sunucuda headless Chrome ile üretilir (`/api/pdf`).
 
 ## Gereksinimler
 - Node.js 18+
@@ -19,6 +20,22 @@ Tarayıcıda: http://localhost:4000
 Windows PowerShell'de: `$env:PORT=4000; npm start`
 
 Veritabanı (`server/teftis.db`) ilk çalıştırmada otomatik oluşturulur.
+
+## Testler
+```bash
+cd server && npm install && npm test
+```
+Sunucu API testleri geçici bir veritabanıyla çalışır; şablon testleri `public/` betiklerini jsdom içinde
+yükleyip her şablonun önizleme ve PDF içeriğini zararlı girdiyle üretir. Chrome gerekmez.
+
+## Kayıtlar ve yedekler
+- **İşlem kaydı (audit):** Giriş/çıkış, başarısız giriş denemeleri, belge oluşturma/görüntüleme/güncelleme/silme
+  ve PDF üretimi veritabanındaki `audit_log` tablosuna yazılır. Bir belgenin geçmişi belge sayfasında görünür.
+- **Erişim ve hata kayıtları:** `server/logs/access-YYYY-MM-DD.log` ve `error-YYYY-MM-DD.log` (satır başına bir
+  JSON kaydı). Arama metinleri kayda yazılmaz. `LOG_RETENTION_DAYS` (varsayılan 90) günden eskiler silinir.
+- **Veritabanı yedeği:** Sunucu her gün `server/backups/teftis-YYYY-MM-DD.db` yedeği alır, `BACKUP_KEEP_DAYS`
+  (varsayılan 14) günden eskileri siler. Veritabanı önce geçici dosyaya yazılıp sonra yerine taşındığı için yazma
+  yarıda kesilse bile eski dosya bozulmaz. Geri dönmek için sunucuyu durdurup yedeği `server/teftis.db` yerine kopyalayın.
 
 ## Linux sunucuda
 ```bash

@@ -110,6 +110,16 @@ const AuthService = {
      * Çıkış yap
      */
     logout() {
+        // Çıkışın sunucuda kayda geçmesi için; sonucu beklenmez
+        const token = this.getToken();
+        if (token) {
+            fetch(`${this.apiBaseUrl}/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                keepalive: true
+            }).catch(() => { /* yoksay */ });
+        }
+
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.userKey);
 
@@ -146,7 +156,7 @@ const AuthService = {
 
         // Token süresini kontrol et
         try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
+            const payload = this._decodePayload(token);
             const expiration = payload.exp * 1000; // milliseconds
 
             if (Date.now() >= expiration) {
@@ -210,28 +220,10 @@ const AuthService = {
         if (!token) return null;
 
         try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log('DEBUG TOKEN:');
-            console.log('Payload:', payload);
-            console.log('Exp (sec):', payload.exp);
-            console.log('Exp (ms):', payload.exp * 1000);
-            console.log('Now (ms):', Date.now());
-            console.log('Diff (ms):', (payload.exp * 1000) - Date.now());
-            return payload.exp * 1000; // MS'ye çevir
+            return this._decodePayload(token).exp * 1000; // MS'ye çevir
         } catch (e) {
-            // Browser environment fallback for atob issues with unicode
-            try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                const payload = JSON.parse(jsonPayload);
-                return payload.exp * 1000;
-            } catch (err) {
-                console.error('Token parse failed:', err);
-                return null;
-            }
+            console.error('Token parse failed:', e);
+            return null;
         }
     },
 
@@ -247,6 +239,15 @@ const AuthService = {
     // =====================================================
     // Private Methods
     // =====================================================
+
+    // JWT gövdesi base64url (- ve _ içerebilir) ve UTF-8'dir; atob doğrudan çözemez.
+    // Adında Türkçe harf olan kullanıcıların oturumu bu yüzden hemen düşüyordu.
+    _decodePayload(token) {
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+        const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+    },
 
     _saveSession(token, user) {
         localStorage.setItem(this.tokenKey, token);
