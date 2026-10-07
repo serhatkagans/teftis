@@ -344,6 +344,8 @@ body::before {
 
 /* Form Inputs */
 input[type="text"],
+input[type="email"],
+input[type="password"],
 input[type="date"],
 input[type="time"],
 input[type="tel"],
@@ -2694,4 +2696,65 @@ textarea {
 
 .checkbox-item:hover {
     background: #e8f4fd;
+}
+
+/* Kullanıcı yönetimi */
+.users-add-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.users-add-card h2 {
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.users-add-card .login-error {
+    margin-bottom: var(--spacing-md);
+}
+
+.users-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+    align-items: end;
+}
+
+.users-form .form-group {
+    margin-bottom: 0;
+}
+
+.users-form input,
+.users-form select {
+    width: 100%;
+}
+
+.users-table tbody tr {
+    cursor: default;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.role-badge.role-admin {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+}
+
+@media (max-width: 768px) {
+    .users-page .documents-table {
+        display: block;
+        overflow-x: auto;
+    }
 }

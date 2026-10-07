@@ -244,8 +244,20 @@ async function initDatabase() {
         db.run("INSERT INTO users (id, email, name, role) VALUES ('00000000-0000-0000-0000-000000000001', 'test@meb.gov.tr', 'Test Müfettiş', 'mufettis')");
     }
 
+    promoteConfiguredAdmins();
+
     saveDatabase();
     console.log('✅ Database tables initialized with searchable columns');
+}
+
+// ADMIN_USERNAMES=ali,veli ile verilen kullanıcılar her açılışta yönetici yapılır
+// (yönetici yalnızca kullanıcı ekleyebilir; belgeler yine kişiye özeldir)
+function promoteConfiguredAdmins() {
+    const usernames = (process.env.ADMIN_USERNAMES || '').split(',').map(u => u.trim()).filter(Boolean);
+    for (const username of usernames) {
+        db.run("UPDATE users SET role = 'admin' WHERE username = ? AND role != 'admin'", [username]);
+        if (db.getRowsModified() > 0) console.log('👑 Yönetici yapıldı:', username);
+    }
 }
 
 // SQLite LIKE yalnızca İngilizce harflerde büyük/küçük ayırmaz;
@@ -512,13 +524,15 @@ app.post('/api/auth/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const id = crypto.randomUUID();
         const now = new Date().toISOString();
+        // İlk hesap yönetici olur; diğer kullanıcıları o ekler
+        const role = hasUsers ? 'mufettis' : 'admin';
 
         db.run(`
             INSERT INTO users (id, username, password, name, email, role, auth_provider, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 'mufettis', 'local', ?, ?)
-        `, [id, username, hashedPassword, name, email || null, now, now]);
+            VALUES (?, ?, ?, ?, ?, ?, 'local', ?, ?)
+        `, [id, username, hashedPassword, name, email || null, role, now, now]);
 
-        const user = { id, username, name, role: 'mufettis' };
+        const user = { id, username, name, role };
         audit(req, 'auth.register', { user });
         saveDatabase();
 
@@ -611,6 +625,86 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 app.post('/api/auth/logout', optionalAuth, (req, res) => {
     if (req.user) audit(req, 'auth.logout');
     res.json({ message: 'Çıkış başarılı' });
+});
+
+// =====================================================
+// Kullanıcı Yönetimi (yalnızca yönetici)
+// =====================================================
+
+const USER_ROLES = ['mufettis', 'admin'];
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,32}$/;
+const MIN_PASSWORD_LENGTH = 8;
+
+// Yetki token'daki role değil veritabanına bakılarak verilir; yetkisi
+// alınan kullanıcı eski token'ıyla işlem yapamaz
+function requireAdmin(req, res, next) {
+    const row = queryRows('SELECT role FROM users WHERE id = ?', [req.user.id])[0];
+    if (!row || row.role !== 'admin') {
+        return res.status(403).json({ error: 'Bu işlem için yönetici yetkisi gerekli' });
+    }
+    next();
+}
+
+app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const users = queryRows(`
+            SELECT u.id, u.username, u.name, u.email, u.role, u.created_at,
+                   (SELECT MAX(created_at) FROM audit_log a WHERE a.user_id = u.id AND a.action = 'auth.login') AS last_login,
+                   (SELECT COUNT(*) FROM documents d WHERE d.user_id = u.id) AS document_count
+            FROM users u
+            WHERE u.password IS NOT NULL
+            ORDER BY u.created_at DESC
+        `);
+        res.json(users);
+    } catch (error) {
+        logError(req, error);
+        res.status(500).json({ error: 'Sunucu hatası' });
+    }
+});
+
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const body = req.body || {};
+        const username = String(body.username || '').trim();
+        const name = String(body.name || '').trim();
+        const email = String(body.email || '').trim() || null;
+        const password = String(body.password || '');
+        const role = body.role || 'mufettis';
+
+        if (!USERNAME_PATTERN.test(username)) {
+            return res.status(400).json({ error: 'Kullanıcı adı 3-32 karakter olmalı; yalnızca harf, rakam, nokta, tire ve alt çizgi içerebilir' });
+        }
+        if (!name) {
+            return res.status(400).json({ error: 'Ad soyad gerekli' });
+        }
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            return res.status(400).json({ error: `Şifre en az ${MIN_PASSWORD_LENGTH} karakter olmalı` });
+        }
+        if (!USER_ROLES.includes(role)) {
+            return res.status(400).json({ error: 'Geçersiz rol' });
+        }
+        if (queryRows('SELECT id FROM users WHERE username = ?', [username]).length > 0) {
+            return res.status(409).json({ error: 'Bu kullanıcı adı zaten kullanılıyor' });
+        }
+        if (email && queryRows('SELECT id FROM users WHERE email = ?', [email]).length > 0) {
+            return res.status(409).json({ error: 'Bu e-posta adresi başka bir kullanıcıda kayıtlı' });
+        }
+
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        db.run(`
+            INSERT INTO users (id, username, password, name, email, role, auth_provider, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'local', ?, ?)
+        `, [id, username, await bcrypt.hash(password, 10), name, email, role, now, now]);
+
+        audit(req, 'user.create', { details: { id, username, role } });
+        saveDatabase();
+
+        res.status(201).json({ id, username, name, email, role, created_at: now });
+    } catch (error) {
+        logError(req, error);
+        res.status(500).json({ error: 'Sunucu hatası' });
+    }
 });
 
 // =====================================================

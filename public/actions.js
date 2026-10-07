@@ -20,6 +20,8 @@ const UI_ACTIONS = new Set([
     // Kayıtlı belgeler
     'downloadDocumentPdf', 'deleteDocument', 'handleDocumentsSearch', 'handleDocumentsCategory',
     'loadDocumentsPage', 'goToDocumentsPage',
+    // Kullanıcı yönetimi
+    'handleAddUser',
     // Form
     'toggleCheckboxOption', 'removeQaItem', 'removeWrittenQuestion', 'updateDiziEkItem', 'removeDiziEkItem',
     // Tema

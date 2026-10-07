@@ -359,3 +359,48 @@ test('oturum uzatma toplam süreyi 40 dakikanın üstüne çıkarmaz', async () 
     assert.ok(minutes > 14.9 && minutes <= 15.01, `beklenen ~15 dk, gelen ${minutes}`);
     assert.equal(extended.data.message, 'Oturum 10 dakika uzatıldı');
 });
+
+test('ilk hesap yönetici olur; yönetici kullanıcı ekler, diğerleri ekleyemez', async () => {
+    const me = await api('POST', '/api/auth/login', { body: { username: 'ayse', password: 'gizli-sifre' } });
+    assert.equal(me.data.user.role, 'admin');
+
+    const forbidden = await api('POST', '/api/users', { token: tokenB, body: { username: 'zeynep', name: 'Zeynep', password: 'cok-gizli-1' } });
+    assert.equal(forbidden.status, 403);
+    assert.equal((await api('GET', '/api/users', { token: tokenB })).status, 403);
+    assert.equal((await api('GET', '/api/users')).status, 401);
+
+    const created = await api('POST', '/api/users', {
+        token: tokenA,
+        body: { username: 'zeynep', name: 'Zeynep Kaya', email: 'zeynep@meb.gov.tr', password: 'cok-gizli-1' }
+    });
+    assert.equal(created.status, 201, JSON.stringify(created.data));
+    assert.equal(created.data.role, 'mufettis');
+    assert.equal(created.data.password, undefined);
+
+    const login = await api('POST', '/api/auth/login', { body: { username: 'zeynep', password: 'cok-gizli-1' } });
+    assert.equal(login.status, 200);
+    assert.equal(login.data.user.name, 'Zeynep Kaya');
+
+    const list = await api('GET', '/api/users', { token: tokenA });
+    assert.equal(list.status, 200);
+    const zeynep = list.data.find(u => u.username === 'zeynep');
+    assert.ok(zeynep.last_login);
+    assert.equal(zeynep.document_count, 0);
+    assert.ok(list.data.every(u => u.password === undefined));
+});
+
+test('kullanıcı ekleme girdileri doğrulanır', async () => {
+    const add = body => api('POST', '/api/users', { token: tokenA, body: { username: 'yeni', name: 'Yeni', password: 'cok-gizli-1', ...body } });
+
+    assert.equal((await add({ username: 'zeynep' })).status, 409);
+    assert.equal((await add({ email: 'zeynep@meb.gov.tr' })).status, 409);
+    assert.equal((await add({ username: 'a b' })).status, 400);
+    assert.equal((await add({ username: '<x>' })).status, 400);
+    assert.equal((await add({ name: '  ' })).status, 400);
+    assert.equal((await add({ password: 'kisa' })).status, 400);
+    assert.equal((await add({ role: 'root' })).status, 400);
+
+    const admin = await add({ username: 'yonetici2', role: 'admin' });
+    assert.equal(admin.status, 201);
+    assert.equal(admin.data.role, 'admin');
+});

@@ -60,6 +60,10 @@ function updateUserMenu() {
         if (userMenu) userMenu.style.display = 'block';
         if (userNameDisplay) userNameDisplay.textContent = user.name || user.username;
         if (userEmailDisplay) userEmailDisplay.textContent = user.email || `${user.username}@meb.gov.tr`;
+        const userRoleDisplay = document.getElementById('userRoleDisplay');
+        if (userRoleDisplay) userRoleDisplay.textContent = user.role === 'admin' ? 'Yönetici' : 'Müfettiş';
+        const navUsers = document.getElementById('navUsers');
+        if (navUsers) navUsers.style.display = user.role === 'admin' ? 'flex' : 'none';
 
         // Show nav links
         if (navHome) navHome.style.display = 'flex';
@@ -135,6 +139,10 @@ function handleRouteChange() {
         const category = decodeURIComponent(parts[1]);
         currentRoute = { view: 'category', templateCode: null, category: category, documentId: null };
         renderCategoryPage(category);
+    } else if (parts[0] === 'users' && !parts[1]) {
+        // Kullanıcı yönetimi (yalnızca yönetici): #/users
+        currentRoute = { view: 'users', templateCode: null, category: null, documentId: null };
+        renderUsersPage();
     } else if (parts[0] === 'documents' && !parts[1]) {
         // Documents list: #/documents
         currentRoute = { view: 'documents-list', templateCode: null, category: null, documentId: null };
